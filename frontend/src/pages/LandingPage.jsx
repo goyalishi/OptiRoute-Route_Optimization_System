@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 
-export function LandingPage() {
+function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false)
 
   useEffect(() => {
@@ -702,3 +702,5 @@ export function LandingPage() {
     </div>
   )
 }
+
+export default LandingPage;
