@@ -5,30 +5,24 @@ const Navbar = ({ user }) => {
   return (
     <nav className="w-full bg-white shadow-sm flex justify-between items-center px-6 py-3">
     
-      <div className="flex items-center gap-3">
-        <div className="bg-blue-600 p-2 rounded-xl">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="white"
-            className="w-6 h-6"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M8.25 4.5h-2.25a2.25 2.25 0 00-2.25 2.25v2.25m18 0V6.75A2.25 2.25 0 0018.75 4.5h-2.25M15.75 19.5h2.25a2.25 2.25 0 002.25-2.25v-2.25m-18 0v2.25A2.25 2.25 0 005.25 19.5h2.25"
-            />
-          </svg>
-        </div>
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Route Optimizer</h1>
-          <p className="text-sm text-gray-500">
-            {user.role === "admin" ? "Admin Dashboard" : "Driver Dashboard"}
-          </p>
-        </div>
-      </div>
+      <div className="flex items-center gap-2">
+              <div
+                aria-hidden="true"
+                className="w-10 h-10 bg-gradient-to-br from-blue-600 to-green-500 rounded-lg flex items-center justify-center"
+              >
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                  />
+                </svg>
+              </div>
+              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-green-500 bg-clip-text text-transparent">
+                RouteOptimizer
+              </span>
+            </div>
 
       <div className="flex items-center gap-4">
         <div className="text-right">
