@@ -5,6 +5,7 @@ import AuthPage from "./pages/AuthPage";
 import LandingPage from "./pages/LandingPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import OptimizeRoute from "./pages/OptimizeRoute";
+import DriverDashboard from "./pages/DriverDashboard";
 
 const App = () => {
   return (
@@ -13,6 +14,7 @@ const App = () => {
       <Route path="/" element={<LandingPage />} />
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/admin/optimize-route" element={<OptimizeRoute />} />
+      <Route path='/driver' element={<DriverDashboard/>}/>
     </Routes>
   );
 };
