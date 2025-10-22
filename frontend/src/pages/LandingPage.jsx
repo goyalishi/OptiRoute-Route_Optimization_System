@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
+import { useNavigate } from "react-router-dom"
 
 function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50)
@@ -17,8 +19,8 @@ function LandingPage() {
   }
 
   const handleGetStarted = () => {
-    if (onGetStarted) return onGetStarted()
-    scrollToSection("features")
+    console.log("hello");
+    return navigate("/Auth");
   }
 
   return (
@@ -76,7 +78,7 @@ function LandingPage() {
               <button
                 type="button"
                 onClick={handleGetStarted}
-                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-green-500 text-white rounded-lg hover:shadow-lg transform hover:scale-105 transition-all"
+                className="cursor-pointer px-6 py-2 bg-gradient-to-r from-blue-600 to-green-500 text-white rounded-lg hover:shadow-lg transform hover:scale-105 transition-all"
               >
                 Get Started
               </button>
@@ -84,7 +86,7 @@ function LandingPage() {
             <button
               type="button"
               onClick={handleGetStarted}
-              className="md:hidden px-4 py-2 bg-gradient-to-r from-blue-600 to-green-500 text-white rounded-lg"
+              className="cursor-pointer md:hidden px-4 py-2 bg-gradient-to-r from-blue-600 to-green-500 text-white rounded-lg"
             >
               Get Started
             </button>
@@ -133,7 +135,7 @@ function LandingPage() {
                 <button
                   type="button"
                   onClick={handleGetStarted}
-                  className="px-8 py-4 bg-gradient-to-r from-blue-600 to-green-500 text-white rounded-lg font-medium hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center gap-2 group"
+                  className="cursor-pointer px-8 py-4 bg-gradient-to-r from-blue-600 to-green-500 text-white rounded-lg font-medium hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center gap-2 group"
                 >
                   Start Free Trial
                   <svg
@@ -649,7 +651,7 @@ function LandingPage() {
               <button
                 type="button"
                 onClick={handleGetStarted}
-                className="px-8 py-4 bg-white text-blue-600 rounded-lg font-medium hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center gap-2 group"
+                className="cursor-pointer px-8 py-4 bg-white text-blue-600 rounded-lg font-medium hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center gap-2 group"
               >
                 Get Started Free
                 <svg

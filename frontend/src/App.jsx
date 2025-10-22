@@ -9,8 +9,8 @@ import OptimizeRoute from "./pages/OptimizeRoute";
 const App = () => {
   return (
     <Routes>
-      <Route path="/" element={<AuthPage />} />
-      <Route path="/home" element={<LandingPage />} />
+      <Route path="/Auth" element={<AuthPage />} />
+      <Route path="/" element={<LandingPage />} />
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/admin/optimize-route" element={<OptimizeRoute />} />
     </Routes>

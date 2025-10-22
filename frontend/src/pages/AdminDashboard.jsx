@@ -32,12 +32,12 @@ const AdminDashboard = () => {
   }, [activeTab]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
       <Navbar user={user} />
 
       {/* Tabs Section */}
       <div className="flex ml-14 mt-6">
-        <div className="flex items-center justify-between gap-4 rounded-3xl bg-gray-200 shadow-md py-2 px-3 text-black w-fit">
+        <div className="flex items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-blue-100 to-green-100 shadow-md py-2 px-3 text-black w-fit">
           {[
             { id: "overview", label: "Overview", icon: "📊" },
             { id: "routes", label: "Routes", icon: "🛣️" },
@@ -48,8 +48,8 @@ const AdminDashboard = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-5 py-2 rounded-3xl text-base font-medium transition-all duration-300 ${
                 activeTab === tab.id
-                  ? "bg-white text-black shadow-sm"
-                  : "text-gray-700 hover:bg-white/70 hover:text-black"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-gray-700 hover:bg-white/80 hover:text-blue-600"
               }`}
             >
               <span className="text-lg">{tab.icon}</span>
@@ -64,7 +64,7 @@ const AdminDashboard = () => {
         {activeTab === "overview" && (
           <>
             <h1 className="text-3xl font-bold text-gray-800 mb-6">
-              Welcome back, {user.name}👋
+              Welcome back, {user.name} 👋
             </h1>
 
             {/* Stats Section */}
@@ -85,13 +85,13 @@ const AdminDashboard = () => {
                 title="Completion Rate"
                 value="98%"
                 icon="✅"
-                color="bg-purple-100 text-purple-600"
+                color="bg-emerald-100 text-emerald-600"
               />
               <StatCard
                 title="Avg Delivery Time"
                 value="23 min"
                 icon="⏱️"
-                color="bg-yellow-100 text-yellow-600"
+                color="bg-teal-100 text-teal-600"
               />
             </div>
 
@@ -101,7 +101,7 @@ const AdminDashboard = () => {
               <div className="flex-1 flex items-center justify-center">
                 <button
                   onClick={() => navigate("/admin/optimize-route")}
-                  className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-indigo-600 hover:to-blue-500 text-white font-semibold px-8 py-4 rounded-2xl shadow-2xl transform transition-all duration-300 hover:scale-105 flex flex-col items-center gap-2 text-center"
+                  className="bg-gradient-to-r from-blue-600 to-green-500 hover:from-green-500 hover:to-blue-600 text-white font-semibold px-8 py-4 rounded-2xl shadow-2xl transform transition-all duration-300 hover:scale-105 flex flex-col items-center gap-2 text-center"
                 >
                   🚀 Optimize New Route
                   <span className="text-sm font-medium text-white/90">
@@ -112,10 +112,10 @@ const AdminDashboard = () => {
 
               {/* Map Preview */}
               <div className="flex-1 bg-white rounded-2xl shadow-2xl border flex flex-col items-center justify-start transition-transform hover:scale-[1.02]">
-                <div className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-t-2xl p-4 text-white text-lg font-semibold text-center">
+                <div className="w-full bg-gradient-to-r from-blue-600 to-green-500 rounded-t-2xl p-4 text-white text-lg font-semibold text-center">
                   Live Route Map
                 </div>
-                <div className="w-full h-64 bg-gradient-to-br from-gray-100 to-gray-200 rounded-b-2xl flex items-center justify-center text-gray-500 font-medium text-lg">
+                <div className="w-full h-64 bg-gradient-to-br from-blue-50 to-green-50 rounded-b-2xl flex items-center justify-center text-gray-500 font-medium text-lg">
                   🗺️ Map Preview Coming Soon
                 </div>
               </div>
@@ -135,6 +135,8 @@ const AdminDashboard = () => {
   );
 };
 
+// ---- Components ---- //
+
 const StatCard = ({ title, value, icon, color }) => (
   <div className="bg-white rounded-2xl p-5 shadow-lg border hover:shadow-xl transition-all duration-200">
     <div className="flex items-center justify-between mb-2">
@@ -153,7 +155,7 @@ const RoutesTable = ({ loading, data }) => (
     ) : (
       <div className="bg-white shadow-lg rounded-2xl overflow-hidden border">
         <table className="w-full text-left">
-          <thead className="bg-blue-600 text-white">
+          <thead className="bg-gradient-to-r from-blue-600 to-green-500 text-white">
             <tr>
               <th className="p-3">ID</th>
               <th className="p-3">Route Name</th>
@@ -162,7 +164,10 @@ const RoutesTable = ({ loading, data }) => (
           </thead>
           <tbody>
             {data.map((route) => (
-              <tr key={route.id} className="border-b hover:bg-blue-50 transition">
+              <tr
+                key={route.id}
+                className="border-b hover:bg-green-50 transition"
+              >
                 <td className="p-3">{route.id}</td>
                 <td className="p-3">{route.title}</td>
                 <td className="p-3">
@@ -197,9 +202,13 @@ const DriversGrid = ({ loading, data }) => (
             key={driver.id}
             className="bg-white p-6 rounded-2xl shadow-lg border hover:shadow-xl transition-transform hover:scale-[1.02]"
           >
-            <h3 className="text-lg font-bold text-gray-800 mb-1">{driver.name}</h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-1">
+              {driver.name}
+            </h3>
             <p className="text-gray-600 text-sm mb-1">✉️ {driver.email}</p>
-            <p className="text-gray-600 text-sm mb-1">📍 {driver.address?.city}</p>
+            <p className="text-gray-600 text-sm mb-1">
+              📍 {driver.address?.city}
+            </p>
             <p className="text-gray-600 text-sm">🏢 {driver.company?.name}</p>
           </div>
         ))}
