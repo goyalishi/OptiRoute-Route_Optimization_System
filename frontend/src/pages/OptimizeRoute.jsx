@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import Navbar from "../components/Navbar";
-import { MapPin, Truck, PlusCircle, FileSpreadsheet, Zap } from "lucide-react";
+import {
+  MapPin,
+  Truck,
+  PlusCircle,
+  FileSpreadsheet,
+  Zap,
+  Minus,
+} from "lucide-react";
 
 const OptimizeRoutePage = () => {
   const user = { name: "Hariom Sharma", role: "admin" };
@@ -10,6 +17,7 @@ const OptimizeRoutePage = () => {
   const [fleet, setFleet] = useState([]);
   const [vehicleType, setVehicleType] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [quantity, setQuantity] = useState(1);
   const [vehicleCount, setVehicleCount] = useState(0);
   const [totalCapacity, setTotalCapacity] = useState(0);
 
@@ -32,14 +40,53 @@ const OptimizeRoutePage = () => {
   };
 
   const addVehicle = () => {
-    if (vehicleType && capacity > 0) {
-      const newFleet = [...fleet, { type: vehicleType, capacity: Number(capacity) }];
+    if (vehicleType && capacity > 0 && quantity > 0) {
+      const vehicleCapacity = Number(capacity);
+      const vehicleQuantity = Number(quantity);
+      const existingVehicleIndex = fleet.findIndex(
+        (v) => v.type === vehicleType && v.capacity === vehicleCapacity
+      );
+
+      let newFleet;
+      if (existingVehicleIndex !== -1) {
+        // Vehicle with same type and capacity exists, increment count
+        newFleet = [...fleet];
+        newFleet[existingVehicleIndex].count += vehicleQuantity;
+      } else {
+        // New vehicle type/capacity combination
+        newFleet = [
+          ...fleet,
+          {
+            type: vehicleType,
+            capacity: vehicleCapacity,
+            count: vehicleQuantity,
+          },
+        ];
+      }
+
       setFleet(newFleet);
       setVehicleType("");
       setCapacity("");
-      setVehicleCount(newFleet.length);
-      setTotalCapacity(newFleet.reduce((sum, v) => sum + v.capacity, 0));
+      setQuantity(1);
+      setVehicleCount(newFleet.reduce((sum, v) => sum + v.count, 0));
+      setTotalCapacity(
+        newFleet.reduce((sum, v) => sum + v.capacity * v.count, 0)
+      );
     }
+  };
+
+  const removeVehicle = (index) => {
+    const newFleet = [...fleet];
+    if (newFleet[index].count > 1) {
+      newFleet[index].count -= 1;
+    } else {
+      newFleet.splice(index, 1);
+    }
+    setFleet(newFleet);
+    setVehicleCount(newFleet.reduce((sum, v) => sum + v.count, 0));
+    setTotalCapacity(
+      newFleet.reduce((sum, v) => sum + v.capacity * v.count, 0)
+    );
   };
 
   return (
@@ -163,6 +210,15 @@ const OptimizeRoutePage = () => {
                 className="border rounded-xl p-2 w-28 text-sm focus:ring-2 focus:ring-green-400 outline-none"
               />
 
+              <input
+                type="number"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                placeholder="Qty"
+                min="1"
+                className="border rounded-xl p-2 w-20 text-sm focus:ring-2 focus:ring-green-400 outline-none"
+              />
+
               <button
                 onClick={addVehicle}
                 className="bg-gradient-to-r from-green-500 to-blue-600 text-white px-4 py-2 rounded-xl font-medium flex items-center gap-1 hover:scale-105 transition"
@@ -181,10 +237,27 @@ const OptimizeRoutePage = () => {
                   {fleet.map((v, i) => (
                     <li
                       key={i}
-                      className="text-gray-700 bg-white rounded-lg p-2 shadow-sm border border-gray-100 hover:bg-blue-50 transition"
+                      className="text-gray-700 bg-white rounded-lg p-3 shadow-sm border border-gray-100 hover:bg-blue-50 transition flex items-center justify-between"
                     >
-                      🚚 {v.type} —{" "}
-                      <span className="font-medium">Capacity:</span> {v.capacity} kg
+                      <div>
+                        <div className="font-medium">
+                          🚚 {v.count}x {v.type}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          <span className="font-medium">Capacity:</span>{" "}
+                          {v.capacity} kg each
+                          <span className="text-green-600 font-medium ml-2">
+                            (Total: {v.capacity * v.count} kg)
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeVehicle(i)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded-lg transition-all"
+                        title="Remove one vehicle"
+                      >
+                        <Minus size={16} />
+                      </button>
                     </li>
                   ))}
                 </ul>
