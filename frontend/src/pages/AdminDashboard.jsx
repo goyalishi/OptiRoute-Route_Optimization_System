@@ -5,10 +5,14 @@ import Navbar from "../components/Navbar";
 
 const AdminDashboard = () => {
   const user = {
-    name: "Hariom Sharma",
-    role: "admin",
-    onLogout: () => alert("Logged out successfully!"),
-  };
+  name: sessionStorage.getItem("username"),
+  role: sessionStorage.getItem("role"),
+  onLogout: () => {
+    sessionStorage.clear(); 
+    alert("Logged out successfully!");
+    window.location.href = "/"; 
+  },
+};
 
   const [activeTab, setActiveTab] = useState("overview");
   const [data, setData] = useState([]);

@@ -12,9 +12,9 @@ const App = () => {
     <Routes>
       <Route path="/Auth" element={<AuthPage />} />
       <Route path="/" element={<LandingPage />} />
-      <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/admin/optimize-route" element={<OptimizeRoute />} />
-      <Route path="/driver" element={<DriverDashboard />} />  
+      <Route path="/driver/dashboard" element={<DriverDashboard />} />  
     </Routes>
   );
 };

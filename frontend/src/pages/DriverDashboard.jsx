@@ -4,10 +4,14 @@ import Navbar from '../components/Navbar';
 
 const DriverDashboard = () => {
     const user = {
-        name: "Krati Agrawal",
-        role: "driver",
-        onLogout: () => alert("Logged out successfully!"),
-    };
+  name: sessionStorage.getItem("username"),
+  role: sessionStorage.getItem("role"),
+  onLogout: () => {
+    sessionStorage.clear(); 
+    alert("Logged out successfully!");
+    window.location.href = "/"; 
+  },
+};
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
         <Navbar user={user}/>
