@@ -73,7 +73,7 @@ export const driverLogin = async (req, res) => {
       accessToken,
       user: {
         id: driver._id,
-        name: driver.name,
+        username: driver.name,
         email: driver.email,
         status: driver.status,
       },
