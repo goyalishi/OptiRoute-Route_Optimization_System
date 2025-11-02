@@ -32,6 +32,10 @@ const driverSchema = new mongoose.Schema(
       lat: { type: Number },
       lng: { type: Number },
     },
+    verified: {
+      type: Boolean,
+      default: false, // 🔹 not verified by default
+    },
   },
   { timestamps: true }
 );

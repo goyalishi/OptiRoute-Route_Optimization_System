@@ -28,6 +28,12 @@ const OptimizeRoutePage = () => {
     }
   };
 
+  const removeAddress = (index) => {
+    const newAddresses = [...addresses];
+    newAddresses.splice(index, 1);
+    setAddresses(newAddresses);
+  };
+
   const handleCSVUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -172,9 +178,16 @@ const OptimizeRoutePage = () => {
                   {addresses.map((addr, i) => (
                     <li
                       key={i}
-                      className="text-gray-700 bg-white rounded-lg p-2 shadow-sm border border-gray-100 hover:bg-green-50 transition"
+                      className="text-gray-700 bg-white rounded-lg p-2 shadow-sm border border-gray-100 hover:bg-green-50 transition flex items-center justify-between"
                     >
-                      📍 {addr}
+                      <span>📍 {addr}</span>
+                      <button
+                        onClick={() => removeAddress(i)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded-lg transition-all"
+                        title="Remove address"
+                      >
+                        <Minus size={16} />
+                      </button>
                     </li>
                   ))}
                 </ul>

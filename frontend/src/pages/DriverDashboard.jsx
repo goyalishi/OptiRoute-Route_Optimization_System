@@ -8,10 +8,14 @@ import DeliveryList from '../components/DriverDashboard/DeliveryList';
 
 const DriverDashboard = () => {
     const user = {
-        name: "Krati Agrawal",
-        role: "driver",
-        onLogout: () => alert("Logged out successfully!"),
-    };
+  name: sessionStorage.getItem("username"),
+  role: sessionStorage.getItem("role"),
+  onLogout: () => {
+    sessionStorage.clear(); 
+    alert("Logged out successfully!");
+    window.location.href = "/"; 
+  },
+};
 
     const [activeTab, setActiveTab] = useState("routemap");
     const [data, setData] = useState([]);
