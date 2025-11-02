@@ -1,19 +1,21 @@
-// src/pages/AuthPage.jsx
 import React, { useState } from "react";
 import AuthTabs from "../components/AuthTabs";
 import InputField from "../components/InputField";
 import RoleSelector from "../components/RoleSelector";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const AuthPage = () => {
   const [activeTab, setActiveTab] = useState("login");
-  const [role, setRole] = useState("admin");
+  const [role, setRole] = useState("driver"); // default for signup
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     password: "",
-    company: "",
   });
+  const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({
@@ -24,33 +26,81 @@ const AuthPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
       if (activeTab === "login") {
-        // LOGIN API CALL
-        const res = await axios.post("", {
-          email: formData.email,
-          password: formData.password,
-        });
+        // Try admin login first
+        try {
+          const res = await axios.post("http://localhost:5000/api/admin/login", {
+            email: formData.email,
+            password: formData.password,
+          });
 
-        alert("Login successful!");
-        console.log("Login response:", res.data);
+          if (res.data.role === "admin") {
+            sessionStorage.setItem("token", res.data.accessToken);
+            sessionStorage.setItem("role", res.data.role);
+            sessionStorage.setItem("username", res.data.user.username);
+            alert(`Welcome back, ${res.data.user.username}!`);
+            navigate("/admin/dashboard");
+            return;
+          }
+        } catch (adminErr) {
+          // Try driver login if admin fails
+          try {
+            const res = await axios.post("http://localhost:5000/api/driver/login", {
+              email: formData.email,
+              password: formData.password,
+            });
+
+            if (res.data.role === "driver") {
+              sessionStorage.setItem("token", res.data.accessToken);
+              sessionStorage.setItem("role", res.data.role);
+              sessionStorage.setItem("username", res.data.user.username);
+              alert(`Welcome back, ${res.data.user.username}!`);
+              navigate("/driver/dashboard");
+              return;
+            }
+          } catch (driverErr) {
+            const msg =
+              driverErr.response?.data?.message ||
+              adminErr.response?.data?.message ||
+              "Invalid credentials or account not verified";
+            alert(msg);
+          }
+        }
       } else {
-        // SIGNUP API CALL
-        const res = await axios.post("", {
-          name: formData.fullName,
-          email: formData.email,
-          password: formData.password,
-          company: formData.company,
-          role: role,
-        });
+        // SIGNUP LOGIC
+        if (role === "admin") {
+          const res = await axios.post("http://localhost:5000/api/admin/signup", {
+            username: formData.fullName,
+            email: formData.email,
+            password: formData.password,
+          });
 
-        alert("Account created successfully!");
-        console.log("Signup response:", res.data);
+          sessionStorage.setItem("username", res.data.user.username);
+          sessionStorage.setItem("role", "admin");
+          alert("Admin account created successfully!");
+          navigate("/admin/dashboard");
+        } else {
+          const res = await axios.post("http://localhost:5000/api/driver/signup", {
+            name: formData.fullName,
+            email: formData.email,
+            password: formData.password,
+          });
+
+          
+          alert(
+            "Driver account created successfully! Wait for admin verification before logging in."
+          );
+          navigate("/Auth");
+        }
       }
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Something went wrong!");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -71,7 +121,6 @@ const AuthPage = () => {
           Smart logistics and delivery management
         </p>
 
-        {/* Tabs for Login / Sign Up */}
         <AuthTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
         <div className="mt-6 space-y-4 text-left">
@@ -80,7 +129,7 @@ const AuthPage = () => {
               label="Full Name"
               type="text"
               name="fullName"
-              placeholder="fullName"
+              placeholder="John Doe"
               onChange={handleChange}
             />
           )}
@@ -102,28 +151,23 @@ const AuthPage = () => {
           />
 
           {activeTab === "signup" && (
-            <>
-              <InputField
-                label="Company"
-                type="text"
-                name="company"
-                placeholder="Company name"
-                optional
-                onChange={handleChange}
-              />
-              <RoleSelector role={role} setRole={setRole} />
-            </>
+            <RoleSelector role={role} setRole={setRole} />
           )}
 
           <button
             type="submit"
+            disabled={loading}
             className={`w-full mt-4 text-white font-medium py-2 rounded-md transition ${
               activeTab === "login"
                 ? "bg-blue-600 hover:bg-blue-700"
                 : "bg-green-600 hover:bg-green-700"
-            }`}
+            } ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
           >
-            {activeTab === "login" ? "Sign In" : "Create Account"}
+            {loading
+              ? "Please wait..."
+              : activeTab === "login"
+              ? "Sign In"
+              : "Create Account"}
           </button>
         </div>
       </form>
