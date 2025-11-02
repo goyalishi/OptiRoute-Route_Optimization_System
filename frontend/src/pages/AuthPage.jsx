@@ -32,10 +32,13 @@ const AuthPage = () => {
       if (activeTab === "login") {
         // Try admin login first
         try {
-          const res = await axios.post("http://localhost:5000/api/admin/login", {
-            email: formData.email,
-            password: formData.password,
-          });
+          const res = await axios.post(
+            `${import.meta.env.VITE_APP_SERVER_URL}/api/admin/login`,
+            {
+              email: formData.email,
+              password: formData.password,
+            }
+          );
 
           if (res.data.role === "admin") {
             sessionStorage.setItem("token", res.data.accessToken);
@@ -48,10 +51,13 @@ const AuthPage = () => {
         } catch (adminErr) {
           // Try driver login if admin fails
           try {
-            const res = await axios.post("http://localhost:5000/api/driver/login", {
-              email: formData.email,
-              password: formData.password,
-            });
+            const res = await axios.post(
+              `${import.meta.env.VITE_APP_SERVER_URL}/api/driver/login`,
+              {
+                email: formData.email,
+                password: formData.password,
+              }
+            );
 
             if (res.data.role === "driver") {
               sessionStorage.setItem("token", res.data.accessToken);
@@ -72,24 +78,29 @@ const AuthPage = () => {
       } else {
         // SIGNUP LOGIC
         if (role === "admin") {
-          const res = await axios.post("http://localhost:5000/api/admin/signup", {
-            username: formData.fullName,
-            email: formData.email,
-            password: formData.password,
-          });
+          const res = await axios.post(
+            `${import.meta.env.VITE_APP_SERVER_URL}/api/admin/signup`,
+            {
+              username: formData.fullName,
+              email: formData.email,
+              password: formData.password,
+            }
+          );
 
           sessionStorage.setItem("username", res.data.user.username);
           sessionStorage.setItem("role", "admin");
           alert("Admin account created successfully!");
           navigate("/admin/dashboard");
         } else {
-          const res = await axios.post("http://localhost:5000/api/driver/signup", {
+          const url = `${
+            import.meta.env.VITE_APP_SERVER_URL
+          }/api/driver/signup`;
+          const res = await axios.post(url, {
             name: formData.fullName,
             email: formData.email,
             password: formData.password,
           });
 
-          
           alert(
             "Driver account created successfully! Wait for admin verification before logging in."
           );
@@ -116,7 +127,9 @@ const AuthPage = () => {
           </div>
         </div>
 
-        <h1 className="text-2xl font-semibold text-gray-800">Route Optimizer</h1>
+        <h1 className="text-2xl font-semibold text-gray-800">
+          Route Optimizer
+        </h1>
         <p className="text-sm text-gray-500 mb-4">
           Smart logistics and delivery management
         </p>
