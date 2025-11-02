@@ -6,15 +6,28 @@ import LandingPage from "./pages/LandingPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import OptimizeRoute from "./pages/OptimizeRoute";
 import DriverDashboard from "./pages/DriverDashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const App = () => {
   return (
     <Routes>
-      <Route path="/Auth" element={<AuthPage />} />
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/admin/dashboard" element={<AdminDashboard />} />
-      <Route path="/admin/optimize-route" element={<OptimizeRoute />} />
-      <Route path="/driver/dashboard" element={<DriverDashboard />} />  
+      {/* Public Routes */}
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/" element={<LandingPage />} />
+
+      {/* Protected Admin Route */}
+        <Route element={<ProtectedRoute role="admin" />}>
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        </Route>
+
+
+      {/* Protected Driver Route */}
+        <Route element={<ProtectedRoute role="driver" />}>
+          <Route path="/driver/dashboard" element={<DriverDashboard />} />
+        </Route>
+
+        {/* Fallback */}
+        <Route path="*" element={<LandingPage />} />
     </Routes>
   );
 };
