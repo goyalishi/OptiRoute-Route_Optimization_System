@@ -36,6 +36,7 @@ const AdminDashboard = () => {
           address: row.Address || row.address,
           phone: row.Phone || "",
           weight: row.Weight || 1,
+          // Add more fields as needed
         }));
         setDeliveries(parsed);
         alert(`Parsed ${parsed.length} deliveries successfully!`);
