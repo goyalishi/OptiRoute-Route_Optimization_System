@@ -3,28 +3,27 @@ import DeliveryPoint from "../models/deliveryPoint.model.js";
 import Driver from "../models/driver.model.js";
 import Route from "../models/route.model.js";
 import { geocodeAddress } from "../services/geocode.service.js";
+import { getFreeDrivers } from "./admin.controller.js";
 
-function getDepotInfo(depot) {
-  if (depot && typeof depot === "object") {
-    const lat = depot.lat;
-    const lng = depot.lng;
-    const address = depot.address;
-    if (lat != null && lng != null && address !== "") return {lng, lat, address};
+async function getDepotInfo(depot) {
+  if (typeof depot === "string" && depot.trim() !== "") {
+    const depotPoint = await geocodeAddress(depot);
+    return depotPoint;
   }
   return null;
 }
 
 export const optimizeDeliveryRoute = async (req, res) => {
   const { depot, adminId, deliveries } = req.body;
-  if (!adminId || !deliveries || deliveries.length === 0) {
+  if (!adminId || !deliveries || deliveries.length === 0 || !depot || !depot.address) {
     return res
       .status(400)
-      .json({ message: "adminId and deliveries are required." });
+      .json({ message: "adminId, depot and deliveries are required." });
   }
 
   try {
     //  Get depot coords 
-    let depotLocation = getDepotInfo(depot);
+    let depotLocation = await getDepotInfo(depot.address);
     if (!depotLocation) {
         return res.status(400).json({ message: "Invalid depot information." });
     }
@@ -40,8 +39,16 @@ export const optimizeDeliveryRoute = async (req, res) => {
       weight: Number(d.weight) || 1,
     }));
 
-    console.log(geos);
-    return res.status(200).json({ geos, geocodedPoints, message: "Geocoding successful" });
+    console.log(geocodedPoints);
+
+    // Fetching free drivers for this admin
+    const freeDrivers = await getFreeDrivers(adminId);
+
+    console.log(freeDrivers);
+
+    return res.status(200).json({ freeDrivers });
+
+
 
   } catch (error) {
     console.error("Optimization error:", error);
