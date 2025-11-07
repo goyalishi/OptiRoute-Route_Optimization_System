@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 const AuthPage = () => {
   const [activeTab, setActiveTab] = useState("login");
-  const [role, setRole] = useState("driver"); // default for signup
+  const [role, setRole] = useState("driver"); 
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -43,6 +43,7 @@ const AuthPage = () => {
           if (res.data.role === "admin") {
             sessionStorage.setItem("token", res.data.accessToken);
             sessionStorage.setItem("role", res.data.role);
+            sessionStorage.setItem("userId", res.data.user.id);
             sessionStorage.setItem("username", res.data.user.username);
             alert(`Welcome back, ${res.data.user.username}!`);
             navigate("/admin/dashboard");
@@ -104,7 +105,7 @@ const AuthPage = () => {
           alert(
             "Driver account created successfully! Wait for admin verification before logging in."
           );
-          navigate("/Auth");
+          navigate("/");
         }
       }
     } catch (err) {
