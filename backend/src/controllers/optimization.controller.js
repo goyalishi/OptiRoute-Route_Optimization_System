@@ -3,7 +3,8 @@ import DeliveryPoint from "../models/deliveryPoint.model.js";
 import Driver from "../models/driver.model.js";
 import Route from "../models/route.model.js";
 import { geocodeAddress } from "../services/geocode.service.js";
-import { getFreeDrivers } from "./admin.controller.js";
+import { getFreeDrivers , selectDrivers } from "../utils/driverSelectionHelper.js";
+import { ApiError } from "../utils/apiError.js";
 
 async function getDepotInfo(depot) {
   if (typeof depot === "string" && depot.trim() !== "") {
@@ -36,19 +37,28 @@ export const optimizeDeliveryRoute = async (req, res) => {
       lat: geos[i].lat,
       lng: geos[i].lng,
       customerDetails: { name: d.name, phone: d.phone },
-      weight: Number(d.weight) || 1,
+      weight: Number(d.weight) || 25,
     }));
 
     console.log(geocodedPoints);
 
     // Fetching free drivers for this admin
-    const freeDrivers = await getFreeDrivers(adminId);
+     const freeDriversRes = await getFreeDrivers(adminId);
+    const freeDrivers = freeDriversRes.drivers;
 
-    console.log(freeDrivers);
+    if (!freeDrivers.length) {
+      throw new ApiError(400, "No free drivers available for route optimization.");
+    }
 
-    return res.status(200).json({ freeDrivers });
+    const selectedDrivers = selectDrivers(freeDrivers, geocodedPoints);
+    console.log("Selected Drivers:", selectedDrivers);
 
-
+    return res.status(200).json({
+      message: "Route optimization successful",
+      freeDrivers: freeDrivers,
+      selectedDrivers: selectedDrivers,
+      deliveries: geocodedPoints,
+    });
 
   } catch (error) {
     console.error("Optimization error:", error);

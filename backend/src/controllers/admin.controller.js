@@ -69,22 +69,3 @@ export const adminLogin = async (req, res) => {
     res.status(500).json({ message: "Login failed", error: error.message });
   }
 };
-
-// ---------- GET FREE DRIVERS FOR ADMIN ----------
-export const getFreeDrivers = async (adminId) => {
-    if (!adminId)
-      throw new ApiError(400, "adminId is required");
-
-    const admin = await Admin.findById(adminId);
-    if (!admin) throw new ApiError(404, "Admin not found");
-
-    const driverIds = Array.isArray(admin.driverIds) ? admin.driverIds : [];
-    if (driverIds.length === 0) throw new ApiError(200, "No free drivers found");
-
-    const freeDrivers = await Driver.find({
-      _id: { $in: driverIds },
-      status: "free",
-    });
-
-    return { drivers: freeDrivers };
-  }
