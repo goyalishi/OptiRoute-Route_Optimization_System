@@ -7,14 +7,15 @@ import { useNavigate } from "react-router-dom";
 
 const AuthPage = () => {
   const [activeTab, setActiveTab] = useState("login");
-  const [role, setRole] = useState("driver"); 
+  const [role, setRole] = useState("driver");
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     password: "",
+    adminEmail: "",   
   });
-  const [loading, setLoading] = useState(false);
 
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -50,7 +51,7 @@ const AuthPage = () => {
             return;
           }
         } catch (adminErr) {
-          // Try driver login if admin fails
+          // If admin login fails => try driver login
           try {
             const res = await axios.post(
               `${import.meta.env.VITE_APP_SERVER_URL}/api/driver/login`,
@@ -93,14 +94,16 @@ const AuthPage = () => {
           alert("Admin account created successfully!");
           navigate("/admin/dashboard");
         } else {
-          const url = `${
-            import.meta.env.VITE_APP_SERVER_URL
-          }/api/driver/signup`;
-          const res = await axios.post(url, {
-            name: formData.fullName,
-            email: formData.email,
-            password: formData.password,
-          });
+          // DRIVER SIGNUP + ADMIN EMAIL SEND
+          const res = await axios.post(
+            `${import.meta.env.VITE_APP_SERVER_URL}/api/driver/signup`,
+            {
+              name: formData.fullName,
+              email: formData.email,
+              password: formData.password,
+              adminEmail: formData.adminEmail, // <-- SEND NEW FIELD
+            }
+          );
 
           alert(
             "Driver account created successfully! Wait for admin verification before logging in."
@@ -163,6 +166,17 @@ const AuthPage = () => {
             placeholder="********"
             onChange={handleChange}
           />
+
+          {/* SHOW ONLY WHEN SIGNUP + ROLE = DRIVER */}
+          {activeTab === "signup" && role === "driver" && (
+            <InputField
+              label="Admin Email"
+              type="email"
+              name="adminEmail"
+              placeholder="admin@example.com"
+              onChange={handleChange}
+            />
+          )}
 
           {activeTab === "signup" && (
             <RoleSelector role={role} setRole={setRole} />
