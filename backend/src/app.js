@@ -6,9 +6,6 @@ import driverRoutes from "./routes/driver.routes.js";
 import optimizationRoutes from "./routes/optimization.routes.js";
 
 const app = express();
-
-
-
 app.use(cors())
 
 app.use(express.json({limit: '20kb'}))

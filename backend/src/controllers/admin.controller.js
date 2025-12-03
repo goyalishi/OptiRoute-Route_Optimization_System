@@ -1,4 +1,6 @@
 import { Admin } from "../models/admin.model.js";
+import {  ApiError } from "../utils/apiError.js";
+import Driver from "../models/driver.model.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
@@ -9,12 +11,12 @@ export const adminSignup = async (req, res) => {
     if (!username || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
-    
+
     const existingAdmin = await Admin.findOne({ email });
     if (existingAdmin) {
       return res.status(400).json({ message: "Email already registered" });
     }
-    
+
     const newAdmin = new Admin({ username, email, password });
     await newAdmin.save();
 
@@ -25,7 +27,6 @@ export const adminSignup = async (req, res) => {
         username: newAdmin.username,
         email: newAdmin.email,
       },
-      
     });
   } catch (error) {
     res.status(500).json({ message: "Signup failed", error: error.message });
@@ -68,4 +69,3 @@ export const adminLogin = async (req, res) => {
     res.status(500).json({ message: "Login failed", error: error.message });
   }
 };
-

@@ -3,28 +3,29 @@ import DeliveryPoint from "../models/deliveryPoint.model.js";
 import Driver from "../models/driver.model.js";
 import Route from "../models/route.model.js";
 import { geocodeAddress } from "../services/geocode.service.js";
+import { getFreeDrivers , selectDrivers } from "../utils/driverSelectionHelper.js";
+import { optimizeRouteWithORS } from "../services/ors.service.js";
+import { ApiError } from "../utils/apiError.js";
 
-function getDepotInfo(depot) {
-  if (depot && typeof depot === "object") {
-    const lat = depot.lat;
-    const lng = depot.lng;
-    const address = depot.address;
-    if (lat != null && lng != null && address !== "") return {lng, lat, address};
+async function getDepotInfo(depot) {
+  if (typeof depot === "string" && depot.trim() !== "") {
+    const depotPoint = await geocodeAddress(depot);
+    return depotPoint;
   }
   return null;
 }
 
 export const optimizeDeliveryRoute = async (req, res) => {
   const { depot, adminId, deliveries } = req.body;
-  if (!adminId || !deliveries || deliveries.length === 0) {
+  if (!adminId || !deliveries || deliveries.length === 0 || !depot || !depot.address) {
     return res
       .status(400)
-      .json({ message: "adminId and deliveries are required." });
+      .json({ message: "adminId, depot and deliveries are required." });
   }
 
   try {
     //  Get depot coords 
-    let depotLocation = getDepotInfo(depot);
+    let depotLocation = await getDepotInfo(depot.address);
     if (!depotLocation) {
         return res.status(400).json({ message: "Invalid depot information." });
     }
@@ -37,11 +38,31 @@ export const optimizeDeliveryRoute = async (req, res) => {
       lat: geos[i].lat,
       lng: geos[i].lng,
       customerDetails: { name: d.name, phone: d.phone },
-      weight: Number(d.weight) || 1,
+      weight: Number(d.weight) || 25,
     }));
 
-    console.log(geos);
-    return res.status(200).json({ geos, geocodedPoints, message: "Geocoding successful" });
+    // console.log(geocodedPoints);
+
+    // Fetching free drivers for this admin
+     const freeDriversRes = await getFreeDrivers(adminId);
+    const freeDrivers = freeDriversRes.drivers;
+
+    if (!freeDrivers.length) {
+      throw new ApiError(400, "No free drivers available for route optimization.");
+    }
+
+    const selectedDrivers = selectDrivers(freeDrivers, geocodedPoints);
+    // console.log("Selected Drivers:", selectedDrivers);
+
+
+    const { response, jobIdMap, vehicleIdMap } = await optimizeRouteWithORS(depotLocation, geocodedPoints, selectedDrivers);
+
+    return res.status(200).json({
+      message: "Route optimization successful",
+      deliveries: geocodedPoints,
+      orsResult
+    });
+
 
   } catch (error) {
     console.error("Optimization error:", error);
