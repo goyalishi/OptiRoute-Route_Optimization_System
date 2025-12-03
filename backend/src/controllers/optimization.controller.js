@@ -4,6 +4,7 @@ import Driver from "../models/driver.model.js";
 import Route from "../models/route.model.js";
 import { geocodeAddress } from "../services/geocode.service.js";
 import { getFreeDrivers , selectDrivers } from "../utils/driverSelectionHelper.js";
+import { optimizeRouteWithORS } from "../services/ors.service.js";
 import { ApiError } from "../utils/apiError.js";
 
 async function getDepotInfo(depot) {
@@ -40,7 +41,7 @@ export const optimizeDeliveryRoute = async (req, res) => {
       weight: Number(d.weight) || 25,
     }));
 
-    console.log(geocodedPoints);
+    // console.log(geocodedPoints);
 
     // Fetching free drivers for this admin
      const freeDriversRes = await getFreeDrivers(adminId);
@@ -51,14 +52,17 @@ export const optimizeDeliveryRoute = async (req, res) => {
     }
 
     const selectedDrivers = selectDrivers(freeDrivers, geocodedPoints);
-    console.log("Selected Drivers:", selectedDrivers);
+    // console.log("Selected Drivers:", selectedDrivers);
+
+
+    const { response, jobIdMap, vehicleIdMap } = await optimizeRouteWithORS(depotLocation, geocodedPoints, selectedDrivers);
 
     return res.status(200).json({
       message: "Route optimization successful",
-      freeDrivers: freeDrivers,
-      selectedDrivers: selectedDrivers,
       deliveries: geocodedPoints,
+      orsResult
     });
+
 
   } catch (error) {
     console.error("Optimization error:", error);
