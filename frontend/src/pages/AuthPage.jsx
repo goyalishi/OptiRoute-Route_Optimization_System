@@ -71,9 +71,7 @@ const AuthPage = () => {
             }
           } catch (driverErr) {
             const msg =
-              driverErr.response?.data?.message ||
-              adminErr.response?.data?.message ||
-              "Invalid credentials or account not verified";
+              "Invalid credentials or account does not exist. Please try again.";
             alert(msg);
           }
         }
