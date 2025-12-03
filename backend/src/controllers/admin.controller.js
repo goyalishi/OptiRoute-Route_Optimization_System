@@ -3,7 +3,6 @@ import {  ApiError } from "../utils/apiError.js";
 import Driver from "../models/driver.model.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import Driver from "../models/driver.model.js";
 import sendMail from "../services/Mail.service.js";
 
 // ---------- SIGNUP ----------
