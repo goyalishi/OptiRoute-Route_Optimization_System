@@ -10,6 +10,7 @@ const AdminDashboard = () => {
   const [csvFile, setCsvFile] = useState(null);
   const [deliveries, setDeliveries] = useState([]);
   const [depotAddress, setDepotAddress] = useState("");
+  const [notifications, setNotifications] = useState(0);
 
   const user = {
     name: sessionStorage.getItem("username") ,
@@ -20,6 +21,10 @@ const AdminDashboard = () => {
       alert("Logged out successfully!");
       window.location.href = "/";
     },
+  };
+
+  const handleNotificationCount = (count) => {
+  setNotifications(count);
   };
 
   // ✅ Handle CSV selection and parsing
@@ -84,16 +89,23 @@ const AdminDashboard = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full font-medium transition-all duration-300 ${
-                activeTab === tab.id
+              className={`flex items-center gap-2 px-5 py-2 rounded-full font-medium transition-all duration-300 ${activeTab === tab.id
                   ? "bg-white text-blue-600 shadow-md"
                   : "text-gray-700 hover:bg-white/80 hover:text-blue-600"
-              }`}
+                }`}
             >
               <span>{tab.icon}</span>
               {tab.label}
+
+              {/* 🔥 Notification bubble only on Driver tab */}
+              {tab.id === "drivers" && notifications > 0 && (
+                <span className=" bg-red-600 text-white text-xs font-semibold  px-2 py-0.5 rounded-full ml-1 animate-pulse transition-all duration-500 transform hover:scale-110 ">
+                  {notifications}
+                </span>
+              )}
             </button>
           ))}
+
         </div>
       </div>
 
@@ -108,7 +120,7 @@ const AdminDashboard = () => {
             setDepotAddress={setDepotAddress}
           />
         ) : (
-          <DriverManagement />
+          <DriverManagement onCountUpdate={handleNotificationCount} />
         )}
       </div>
     </div>
