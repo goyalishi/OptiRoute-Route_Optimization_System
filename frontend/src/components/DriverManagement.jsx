@@ -3,30 +3,36 @@ import { FiUsers } from "react-icons/fi";
 import axios from "axios";
 import { useEffect, useState } from "react";
 
-const DriverManagement = () => {
+const DriverManagement = ({ onCountUpdate }) => {
   const adminId = sessionStorage.getItem("userId");
 
   const [verifiedDrivers, setVerifiedDrivers] = useState([]);
   const [unverifiedDrivers, setUnverifiedDrivers] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [loadingId, setLoadingId] = useState(null);
+
 
 
   const fetchDrivers = async () => {
-    try {
-      const res = await axios.get(
-        `${import.meta.env.VITE_APP_SERVER_URL}/api/admin/drivers/${adminId}`
-      );
+  try {
+    const res = await axios.get(
+      `${import.meta.env.VITE_APP_SERVER_URL}/api/admin/drivers/${adminId}`
+    );
 
-      setVerifiedDrivers(res.data.verifiedDrivers || []);
-      setUnverifiedDrivers(res.data.unverifiedDrivers || []);
+    const unverified = res.data.unverifiedDrivers || [];
+    const verified = res.data.verifiedDrivers || [];
 
-      if (res.data.verifiedDrivers.length > 0 && !selected) {
-        setSelected(res.data.verifiedDrivers[0]);
-      }
-    } catch (error) {
-      console.error("Error fetching drivers:", error);
+    setVerifiedDrivers(verified);
+    setUnverifiedDrivers(unverified);
+    onCountUpdate(unverified.length);   // ← 🔥 send count to parent
+
+    if (verified.length > 0 && !selected) {
+      setSelected(verified[0]);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching drivers:", error);
+  }
+};
 
   useEffect(() => {
     fetchDrivers();
@@ -59,11 +65,15 @@ const DriverManagement = () => {
                   <p className="text-sm text-gray-500">{d.email}</p>
                 </div>
                 <button
-                  onClick={() => verifyDriver(d._id, fetchDrivers)}
-                  className="px-4 py-1 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  onClick={() => verifyDriver(d._id, fetchDrivers, setLoadingId)}
+                  disabled={loadingId === d._id}
+                  className={`px-4 py-1 cursor-pointer text-white rounded-md transition-all duration-300
+                  ${loadingId === d._id ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}
+                  `}
                 >
-                  Verify
+                  {loadingId === d._id ? "Verifying..." : "Verify"}
                 </button>
+
               </li>
             ))}
           </ul>
@@ -119,8 +129,9 @@ const DriverManagement = () => {
 };
 
 // Verify Driver Handler
-const verifyDriver = async (driverId, refresh) => {
+const verifyDriver = async (driverId, refresh, setLoadingId) => {
   try {
+    setLoadingId(driverId);
     await axios.patch(
       `${import.meta.env.VITE_APP_SERVER_URL}/api/admin/verify-driver/${driverId}`
     );
@@ -129,6 +140,9 @@ const verifyDriver = async (driverId, refresh) => {
   } catch (err) {
     console.error(err);
     alert("Failed to verify driver");
+  }
+  finally {
+    setLoadingId(null); // 🔄 revert loading state
   }
 };
 
