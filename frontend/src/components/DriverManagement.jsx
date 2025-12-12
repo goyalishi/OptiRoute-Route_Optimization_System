@@ -1,51 +1,23 @@
-// ================= DRIVER MANAGEMENT TAB =================
 import { FiUsers } from "react-icons/fi";
 import axios from "axios";
 import { useEffect, useState } from "react";
 
-const DriverManagement = ({ onCountUpdate }) => {
-  const adminId = sessionStorage.getItem("userId");
-
-  const [verifiedDrivers, setVerifiedDrivers] = useState([]);
-  const [unverifiedDrivers, setUnverifiedDrivers] = useState([]);
+const DriverManagement = ({ drivers, refresh }) => {
   const [selected, setSelected] = useState(null);
   const [loadingId, setLoadingId] = useState(null);
 
-
-
-  const fetchDrivers = async () => {
-  try {
-    const res = await axios.get(
-      `${import.meta.env.VITE_APP_SERVER_URL}/api/admin/drivers/${adminId}`
-    );
-
-    const unverified = res.data.unverifiedDrivers || [];
-    const verified = res.data.verifiedDrivers || [];
-
-    setVerifiedDrivers(verified);
-    setUnverifiedDrivers(unverified);
-    onCountUpdate(unverified.length);   // ← 🔥 send count to parent
-
-    if (verified.length > 0 && !selected) {
-      setSelected(verified[0]);
-    }
-  } catch (error) {
-    console.error("Error fetching drivers:", error);
-  }
-};
+  const verifiedDrivers = drivers.verifiedDrivers || [];
+  const unverifiedDrivers = drivers.unverifiedDrivers || [];
 
   useEffect(() => {
-    fetchDrivers();
-
-    // Auto-refresh every 20  seconds → NO SOCKET.IO NEEDED
-    const interval = setInterval(fetchDrivers, 20000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!selected && verifiedDrivers.length > 0) {
+      setSelected(verifiedDrivers[0]);
+    }
+  }, [verifiedDrivers]);
 
   return (
     <div className="space-y-8 mt-6">
-
-      {/* 🔴 Unverified Drivers Section */}
+      {/* Unverified Drivers */}
       <div className="bg-white p-6 rounded-2xl shadow-lg border border-red-200">
         <h2 className="text-lg font-semibold mb-4 text-red-600 flex items-center">
           <FiUsers className="mr-2" /> Unverified Drivers ({unverifiedDrivers.length})
@@ -58,33 +30,35 @@ const DriverManagement = ({ onCountUpdate }) => {
             {unverifiedDrivers.map((d) => (
               <li
                 key={d._id}
-                className="p-3 bg-red-50 border border-red-200 rounded-lg flex justify-between items-center"
+                className="p-3 bg-red-50 border rounded-lg flex justify-between"
               >
                 <div>
-                  <p className="font-medium text-gray-800">{d.name}</p>
+                  <p className="font-medium">{d.name}</p>
                   <p className="text-sm text-gray-500">{d.email}</p>
                 </div>
+
                 <button
-                  onClick={() => verifyDriver(d._id, fetchDrivers, setLoadingId)}
+                  onClick={() =>
+                    verifyDriver(d._id, refresh, setLoadingId)
+                  }
                   disabled={loadingId === d._id}
-                  className={`px-4 py-1 cursor-pointer text-white rounded-md transition-all duration-300
-                  ${loadingId === d._id ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}
-                  `}
+                  className={`px-4 py-1 rounded-md text-white ${
+                    loadingId === d._id
+                      ? "bg-gray-400"
+                      : "bg-green-600 hover:bg-green-700"
+                  }`}
                 >
                   {loadingId === d._id ? "Verifying..." : "Verify"}
                 </button>
-
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      {/* 🟢 Verified Drivers (Existing UI) */}
+      {/* Verified Drivers */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Drivers List */}
-        <div className="bg-white rounded-2xl shadow-lg border border-green-100 hover:shadow-2xl transition-all duration-300 p-5">
+        <div className="bg-white rounded-2xl shadow-lg border p-5">
           <h2 className="text-lg font-semibold mb-4 flex items-center text-gray-800">
             <FiUsers className="mr-2 text-blue-600" />
             Drivers ({verifiedDrivers.length})
@@ -95,27 +69,24 @@ const DriverManagement = ({ onCountUpdate }) => {
               <div
                 key={driver._id}
                 onClick={() => setSelected(driver)}
-                className={`p-3 rounded-lg flex justify-between items-center cursor-pointer transition-all ${
+                className={`p-3 rounded-lg cursor-pointer ${
                   selected?._id === driver._id
                     ? "bg-blue-100 border-l-4 border-blue-600"
                     : "hover:bg-gray-50"
                 }`}
               >
                 <div>
-                  <p className="font-medium text-gray-800">{driver.name}</p>
+                  <p className="font-medium">{driver.name}</p>
                   <p className="text-sm text-gray-500">
                     {driver.vehicleType || "Vehicle Not Assigned"}
                   </p>
                 </div>
-                <div
-                  className="h-3 w-3 rounded-full bg-green-500"
-                ></div>
+                <div className="h-3 w-3 rounded-full bg-green-500"></div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Driver Details */}
         {selected ? (
           <DriverDetails selected={selected} />
         ) : (
@@ -128,7 +99,7 @@ const DriverManagement = ({ onCountUpdate }) => {
   );
 };
 
-// Verify Driver Handler
+// Verify Driver
 const verifyDriver = async (driverId, refresh, setLoadingId) => {
   try {
     setLoadingId(driverId);
@@ -138,21 +109,19 @@ const verifyDriver = async (driverId, refresh, setLoadingId) => {
     alert("Driver verified successfully!");
     refresh();
   } catch (err) {
-    console.error(err);
     alert("Failed to verify driver");
-  }
-  finally {
-    setLoadingId(null); // 🔄 revert loading state
+  } finally {
+    setLoadingId(null);
   }
 };
 
-// Driver Details Component (same as before)
+// Driver Details
 const DriverDetails = ({ selected }) => (
-  <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-blue-100 hover:shadow-2xl transition-all duration-300 p-6">
-    <h3 className="text-xl font-semibold text-gray-800">{selected.name}</h3>
-    <p className="text-sm text-gray-500 mb-4">{selected.email}</p>
+  <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border p-6">
+    <h3 className="text-xl font-semibold">{selected.name}</h3>
+    <p className="text-sm mb-4">{selected.email}</p>
 
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <InfoCard label="Phone" value={selected.phone || "Not Provided"} />
       <InfoCard label="Vehicle" value={selected.vehicleType || "N/A"} />
       <InfoCard label="Status" value={selected.status || "Active"} />
@@ -161,9 +130,9 @@ const DriverDetails = ({ selected }) => (
 );
 
 const InfoCard = ({ label, value }) => (
-  <div className="p-4 bg-gray-50 border rounded-lg hover:bg-green-50 transition-all">
+  <div className="p-4 bg-gray-50 border rounded-lg">
     <p className="text-sm text-gray-500">{label}</p>
-    <p className="font-medium text-gray-800">{value}</p>
+    <p className="font-medium">{value}</p>
   </div>
 );
 
