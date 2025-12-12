@@ -69,6 +69,19 @@ export const driverSignup = async (req, res) => {
     `
     );
 
+    // Emit socket event to notify admin
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("driver_registered", {
+        message: "New driver registered",
+        driver: {
+          id: newDriver._id,
+          name: newDriver.name,
+          email: newDriver.email,
+        },
+      });
+    }
+
     res.status(201).json({
       message:
         "Driver registered successfully. Waiting for admin verification.",

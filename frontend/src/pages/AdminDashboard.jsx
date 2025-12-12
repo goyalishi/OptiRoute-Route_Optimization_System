@@ -4,6 +4,7 @@ import { FiMapPin, FiTruck, FiUploadCloud } from "react-icons/fi";
 import axios from "axios";
 import Papa from "papaparse";
 import DriverManagement from "../components/DriverManagement";
+import { io } from "socket.io-client";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("optimize");
@@ -47,8 +48,20 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchDriverStats();
 
-    const interval = setInterval(fetchDriverStats, 20000); // auto-refresh
-    return () => clearInterval(interval);
+    const socket = io(import.meta.env.VITE_APP_SERVER_URL);
+
+    socket.on("connect", () => {
+      console.log("Connected to socket server");
+    });
+
+    socket.on("driver_registered", (data) => {
+      console.log("New driver registered:", data);
+      fetchDriverStats();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   const handleCsvUpload = (e) => {
@@ -111,11 +124,10 @@ const AdminDashboard = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full font-medium transition-all duration-300 ${
-                activeTab === tab.id
+              className={`flex items-center gap-2 px-5 py-2 rounded-full font-medium transition-all duration-300 ${activeTab === tab.id
                   ? "bg-white text-blue-600 shadow-md"
                   : "text-gray-700 hover:bg-white/80 hover:text-blue-600"
-              }`}
+                }`}
             >
               <span>{tab.icon}</span>
               {tab.label}
