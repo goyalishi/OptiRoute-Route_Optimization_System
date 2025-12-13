@@ -1,19 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
-import { FiMapPin, FiTruck, FiUploadCloud, FiUsers } from "react-icons/fi";
+import { FiMapPin, FiTruck, FiUploadCloud } from "react-icons/fi";
 import axios from "axios";
 import Papa from "papaparse";
 import DriverManagement from "../components/DriverManagement";
+import { io } from "socket.io-client";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("optimize");
   const [csvFile, setCsvFile] = useState(null);
   const [deliveries, setDeliveries] = useState([]);
   const [depotAddress, setDepotAddress] = useState("");
+
   const [notifications, setNotifications] = useState(0);
 
+  const [driversData, setDriversData] = useState({
+    verifiedDrivers: [],
+    unverifiedDrivers: [],
+  });
+
   const user = {
-    name: sessionStorage.getItem("username") ,
+    name: sessionStorage.getItem("username"),
     role: sessionStorage.getItem("role"),
     id: sessionStorage.getItem("userId"),
     onLogout: () => {
@@ -23,11 +30,40 @@ const AdminDashboard = () => {
     },
   };
 
-  const handleNotificationCount = (count) => {
-  setNotifications(count);
+  const fetchDriverStats = async () => {
+    try {
+      const adminId = sessionStorage.getItem("userId");
+
+      const res = await axios.get(
+        `${import.meta.env.VITE_APP_SERVER_URL}/api/admin/drivers/${adminId}`
+      );
+
+      setDriversData(res.data);
+      setNotifications(res.data.unverifiedDrivers.length);
+    } catch (error) {
+      console.error("Error fetching driver stats:", error);
+    }
   };
 
-  // ✅ Handle CSV selection and parsing
+  useEffect(() => {
+    fetchDriverStats();
+
+    const socket = io(import.meta.env.VITE_APP_SERVER_URL);
+
+    socket.on("connect", () => {
+      console.log("Connected to socket server");
+    });
+
+    socket.on("driver_registered", (data) => {
+      console.log("New driver registered:", data);
+      fetchDriverStats();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
   const handleCsvUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -42,7 +78,6 @@ const AdminDashboard = () => {
           address: row.Address || row.address,
           phone: row.Phone || "",
           weight: row.Weight || 1,
-          // Add more fields as needed
         }));
         setDeliveries(parsed);
         alert(`Parsed ${parsed.length} deliveries successfully!`);
@@ -50,7 +85,6 @@ const AdminDashboard = () => {
     });
   };
 
-  // ✅ Handle Optimization request
   const handleOptimize = async () => {
     if (!csvFile) return alert("Please select a CSV file first.");
     if (!depotAddress.trim()) return alert("Please enter a depot address.");
@@ -67,11 +101,12 @@ const AdminDashboard = () => {
         data,
         { headers: { "Content-Type": "application/json" } }
       );
+
       console.log("Response:", response.data);
       alert("Optimization successful! Check console for route details.");
     } catch (error) {
       console.error("Optimization error:", error);
-      alert("Error optimizing routes. Check console for details.");
+      alert("Error optimizing routes.");
     }
   };
 
@@ -97,15 +132,14 @@ const AdminDashboard = () => {
               <span>{tab.icon}</span>
               {tab.label}
 
-              {/* 🔥 Notification bubble only on Driver tab */}
+              {/* 🔴 Notification bubble */}
               {tab.id === "drivers" && notifications > 0 && (
-                <span className=" bg-red-600 text-white text-xs font-semibold  px-2 py-0.5 rounded-full ml-1 animate-pulse transition-all duration-500 transform hover:scale-110 ">
+                <span className="bg-red-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full ml-1 animate-pulse transition-all duration-500 transform hover:scale-110">
                   {notifications}
                 </span>
               )}
             </button>
           ))}
-
         </div>
       </div>
 
@@ -120,7 +154,7 @@ const AdminDashboard = () => {
             setDepotAddress={setDepotAddress}
           />
         ) : (
-          <DriverManagement onCountUpdate={handleNotificationCount} />
+          <DriverManagement drivers={driversData} refresh={fetchDriverStats} />
         )}
       </div>
     </div>
@@ -129,7 +163,6 @@ const AdminDashboard = () => {
 
 export default AdminDashboard;
 
-// ================= OPTIMIZE ROUTES TAB =================
 const OptimizeRoutes = ({
   csvFile,
   handleCsvUpload,
@@ -172,13 +205,11 @@ const OptimizeRoutes = ({
             >
               Choose File
             </label>
-            {csvFile && (
-              <p className="mt-2 text-sm text-gray-600">{csvFile.name}</p>
-            )}
+            {csvFile && <p className="mt-2 text-sm text-gray-600">{csvFile.name}</p>}
           </div>
         </div>
 
-        {/* Depot Address Input (same design container) */}
+        {/* Depot Address */}
         <div className="bg-white rounded-2xl shadow-lg border border-blue-100 hover:shadow-2xl transition-all duration-300 p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
             <FiTruck className="mr-2 text-green-600" /> Depot Point
@@ -206,7 +237,7 @@ const OptimizeRoutes = ({
         </div>
       </div>
 
-      {/* Summary Section (unchanged) */}
+      {/* Summary Section */}
       <div className="bg-white rounded-2xl shadow-lg border border-green-100 hover:shadow-2xl transition-all duration-300 p-6">
         <h3 className="text-lg font-semibold mb-4 text-gray-800">
           Optimization Summary
@@ -239,5 +270,3 @@ const SummaryCard = ({ title, value, color }) => (
     <p className={`text-lg font-semibold mt-1 ${color}`}>{value}</p>
   </div>
 );
-
-
