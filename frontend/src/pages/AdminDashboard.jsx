@@ -77,7 +77,8 @@ const AdminDashboard = () => {
           name: row.Name || row.name,
           address: row.Address || row.address,
           phone: row.Phone || "",
-          weight: row.Weight || 1,
+          weight: Number(row.Weight) || 25,
+          // Add more fields as needed
         }));
         setDeliveries(parsed);
         alert(`Parsed ${parsed.length} deliveries successfully!`);

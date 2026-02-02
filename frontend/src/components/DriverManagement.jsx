@@ -24,7 +24,7 @@ const DriverManagement = ({ drivers, refresh }) => {
         </h2>
 
         {unverifiedDrivers.length === 0 ? (
-          <p className="text-gray-500">No pending verifications 🎉</p>
+          <p className="text-gray-500">No pending verifications</p>
         ) : (
           <ul className="space-y-3">
             {unverifiedDrivers.map((d) => (
@@ -77,9 +77,6 @@ const DriverManagement = ({ drivers, refresh }) => {
               >
                 <div>
                   <p className="font-medium">{driver.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {driver.vehicleType || "Vehicle Not Assigned"}
-                  </p>
                 </div>
                 <div className="h-3 w-3 rounded-full bg-green-500"></div>
               </div>
@@ -123,7 +120,6 @@ const DriverDetails = ({ selected }) => (
 
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <InfoCard label="Phone" value={selected.phone || "Not Provided"} />
-      <InfoCard label="Vehicle" value={selected.vehicleType || "N/A"} />
       <InfoCard label="Status" value={selected.status || "Active"} />
     </div>
   </div>

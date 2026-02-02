@@ -6,7 +6,7 @@ const ORS_BASE_URL = "https://api.openrouteservice.org/optimization";
 async function optimizeRouteWithORS(
   depotLocation,
   geocodedPoints,
-  selectedDrivers
+  drivers
 ) {
   try {
     const jobIdMap = {}; // orsJobId -> geocodedPoint
@@ -26,7 +26,7 @@ async function optimizeRouteWithORS(
 
     const vehicleIdMap = {}; //orsVehicleId -> realDriverId (string)
 
-    const vehicles = selectedDrivers.map((driver, index) => {
+    const vehicles = drivers.map((driver, index) => {
       const orsVehicleId = index + 1;
       vehicleIdMap[orsVehicleId] = driver._id.toString();
 

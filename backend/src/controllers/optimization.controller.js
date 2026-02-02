@@ -46,13 +46,14 @@ export const optimizeDeliveryRoute = async (req, res) => {
     // Fetching free drivers for this admin
      const freeDriversRes = await getFreeDrivers(adminId);
     const freeDrivers = freeDriversRes.drivers;
+    // console.log(freeDrivers);
 
     if (!freeDrivers.length) {
       throw new ApiError(400, "No free drivers available for route optimization.");
     }
 
     const selectedDrivers = selectDrivers(freeDrivers, geocodedPoints);
-    // console.log("Selected Drivers:", selectedDrivers);
+    console.log("Selected Drivers:", selectedDrivers);
 
 
     const { response, jobIdMap, vehicleIdMap } = await optimizeRouteWithORS(depotLocation, geocodedPoints, selectedDrivers);
@@ -60,7 +61,7 @@ export const optimizeDeliveryRoute = async (req, res) => {
     return res.status(200).json({
       message: "Route optimization successful",
       deliveries: geocodedPoints,
-      orsResult
+      response:response
     });
 
 

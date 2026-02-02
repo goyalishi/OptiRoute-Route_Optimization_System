@@ -12,7 +12,12 @@ const AuthPage = () => {
     fullName: "",
     email: "",
     password: "",
-    adminEmail: "",   
+    phone: "",
+    adminEmail: "",
+    vehicleNumber: "",
+    vehicleType: "",
+    capacity: "",
+    model: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -38,7 +43,7 @@ const AuthPage = () => {
             {
               email: formData.email,
               password: formData.password,
-            }
+            },
           );
 
           if (res.data.role === "admin") {
@@ -58,7 +63,7 @@ const AuthPage = () => {
               {
                 email: formData.email,
                 password: formData.password,
-              }
+              },
             );
 
             if (res.data.role === "driver") {
@@ -84,7 +89,7 @@ const AuthPage = () => {
               username: formData.fullName,
               email: formData.email,
               password: formData.password,
-            }
+            },
           );
 
           sessionStorage.setItem("username", res.data.user.username);
@@ -99,12 +104,17 @@ const AuthPage = () => {
               name: formData.fullName,
               email: formData.email,
               password: formData.password,
-              adminEmail: formData.adminEmail, // <-- SEND NEW FIELD
-            }
+              phone: formData.phone,
+              adminEmail: formData.adminEmail,
+              vehicleNumber: formData.vehicleNumber,
+              vehicleType: formData.vehicleType,
+              capacity: formData.capacity,
+              model: formData.model,
+            },
           );
 
           alert(
-            "Driver account created successfully! Wait for admin verification before logging in."
+            "Driver account created successfully! Wait for admin verification before logging in.",
           );
           navigate("/");
         }
@@ -165,15 +175,75 @@ const AuthPage = () => {
             onChange={handleChange}
           />
 
-          {/* SHOW ONLY WHEN SIGNUP + ROLE = DRIVER */}
           {activeTab === "signup" && role === "driver" && (
             <InputField
-              label="Admin Email"
-              type="email"
-              name="adminEmail"
-              placeholder="admin@example.com"
+              label="Phone Number"
+              type="tel"
+              name="phone"
+              placeholder="+91 98765 43210"
               onChange={handleChange}
             />
+          )}
+
+          {/* SHOW ONLY WHEN SIGNUP + ROLE = DRIVER */}
+          {activeTab === "signup" && role === "driver" && (
+            <>
+              <InputField
+                label="Admin Email"
+                type="email"
+                name="adminEmail"
+                placeholder="admin@example.com"
+                onChange={handleChange}
+              />
+
+              <div className="border-t pt-4 mt-2">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                  🚗 Vehicle Details
+                </h3>
+
+                <InputField
+                  label="Vehicle Number"
+                  type="text"
+                  name="vehicleNumber"
+                  placeholder="e.g., DL-01-AB-1234"
+                  onChange={handleChange}
+                />
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Vehicle Type
+                  </label>
+                  <select
+                    name="vehicleType"
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Select type</option>
+                    <option value="bike">Bike</option>
+                    <option value="van">Van</option>
+                    <option value="tempo">Tempo</option>
+                    <option value="truck">Truck</option>
+                  </select>
+                </div>
+
+                <InputField
+                  label="Capacity (kg)"
+                  type="number"
+                  name="capacity"
+                  placeholder="e.g., 500"
+                  onChange={handleChange}
+                />
+
+                <InputField
+                  label="Model (optional)"
+                  type="text"
+                  name="model"
+                  placeholder="e.g., Tata Ace"
+                  onChange={handleChange}
+                />
+              </div>
+            </>
           )}
 
           {activeTab === "signup" && (
@@ -192,8 +262,8 @@ const AuthPage = () => {
             {loading
               ? "Please wait..."
               : activeTab === "login"
-              ? "Sign In"
-              : "Create Account"}
+                ? "Sign In"
+                : "Create Account"}
           </button>
         </div>
       </form>

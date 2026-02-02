@@ -1,5 +1,6 @@
 import Driver from "../models/driver.model.js";
 import { Admin } from "../models/admin.model.js";
+import Vehicle from "../models/vehicle.model.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
@@ -8,12 +9,32 @@ import sendMail from "../services/Mail.service.js";
 // ---------- SIGNUP ----------
 export const driverSignup = async (req, res) => {
   try {
-    const { name, email, password, phone, adminEmail } = req.body;
+    const {
+      name,
+      email,
+      password,
+      phone,
+      adminEmail,
+      vehicleNumber,
+      vehicleType,
+      capacity,
+      model,
+    } = req.body;
 
     // Validate required fields
-    if (!name || !email || !password || !adminEmail) {
+    if (
+      !name ||
+      !email ||
+      !password ||
+      !phone ||
+      !adminEmail ||
+      !vehicleNumber ||
+      !vehicleType ||
+      !capacity
+    ) {
       return res.status(400).json({
-        message: "Name, email, password, and admin email are required",
+        message:
+          "Name, email, password, phone, admin email, vehicle number, vehicle type, and capacity are required",
       });
     }
 
@@ -33,16 +54,32 @@ export const driverSignup = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new driver
+    // Create new vehicle first
+    const newVehicle = new Vehicle({
+      vehicleNumber,
+      type: vehicleType,
+      capacity: Number(capacity),
+      model: model || "",
+      status: "free",
+    });
+
+    await newVehicle.save();
+
+    // Create new driver with vehicle reference
     const newDriver = new Driver({
       name,
       email,
       password: hashedPassword,
       phone,
+      vehicleId: newVehicle._id,
       verified: false,
     });
 
     await newDriver.save();
+
+    // Update vehicle's assignedTo field
+    newVehicle.assignedTo = newDriver._id;
+    await newVehicle.save();
 
     // Add driver reference to admin
     admin.driverIds.push(newDriver._id);
@@ -60,6 +97,10 @@ export const driverSignup = async (req, res) => {
         <li><strong>Name:</strong> ${name}</li>
         <li><strong>Email:</strong> ${email}</li>
         <li><strong>Phone:</strong> ${phone || "Not Provided"}</li>
+        <li><strong>Vehicle Number:</strong> ${vehicleNumber}</li>
+        <li><strong>Vehicle Type:</strong> ${vehicleType}</li>
+        <li><strong>Capacity:</strong> ${capacity} kg</li>
+        <li><strong>Model:</strong> ${model || "Not Specified"}</li>
       </ul>
 
       <p>Please visit your admin dashboard to review and verify the driver.</p>
@@ -92,9 +133,7 @@ export const driverSignup = async (req, res) => {
       },
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Signup failed", error: error.message });
+    res.status(500).json({ message: "Signup failed", error: error.message });
   }
 };
 
@@ -109,8 +148,7 @@ export const driverLogin = async (req, res) => {
         .json({ message: "Email and password are required" });
 
     const driver = await Driver.findOne({ email });
-    if (!driver)
-      return res.status(404).json({ message: "Driver not found" });
+    if (!driver) return res.status(404).json({ message: "Driver not found" });
 
     if (!driver.verified) {
       const admin = await Admin.findOne({ driverIds: driver._id });
@@ -155,7 +193,6 @@ export const driverLogin = async (req, res) => {
   </div>
   `
       );
-
 
       return res.status(403).json({
         message:

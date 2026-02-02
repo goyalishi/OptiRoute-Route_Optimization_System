@@ -17,6 +17,7 @@ const getFreeDrivers = async (adminId) => {
   if (!admin) throw new ApiError(404, "Admin not found");
 
   const driverIds = Array.isArray(admin.driverIds) ? admin.driverIds : [];
+
   if (driverIds.length === 0) return { drivers: [] };
 
   // Fetch free drivers & populate their vehicles
@@ -29,7 +30,10 @@ const getFreeDrivers = async (adminId) => {
     match: { status: "free" },
   });
 
-  console.log(freeDrivers);
+  // console.log(
+  //   "Free Drivers Found:",
+  //   freeDrivers.map((d) => ({ id: d._id, name: d.name, email: d.email }))
+  // );
   const validDrivers = freeDrivers.filter(
     (d) => d.vehicleId && d.vehicleId.capacity
   );
