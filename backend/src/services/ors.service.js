@@ -3,28 +3,23 @@ import { ApiError } from "../utils/apiError.js";
 
 const ORS_BASE_URL = "https://api.openrouteservice.org/optimization";
 
-async function optimizeRouteWithORS(
-  depotLocation,
-  geocodedPoints,
-  drivers
-) {
+async function optimizeRouteWithORS(depotLocation, geocodedPoints, drivers) {
   try {
-    const jobIdMap = {}; // orsJobId -> geocodedPoint
+    // ORS Optimization API requires numeric IDs for jobs/vehicles.
+    const jobIdMap = {}; // orsJobId (number) -> deliveryPointId (string)
+    const vehicleIdMap = {}; // orsVehicleId (number) -> driverId (string)
 
     const jobs = geocodedPoints.map((point, index) => {
       const orsJobId = index + 1;
-      jobIdMap[orsJobId] = point;
+      jobIdMap[orsJobId] = point.tempId;
+
       return {
-        id: index + 1,
+        id: orsJobId,
         location: [point.lng, point.lat],
         service: 300,
         amount: [point.weight],
       };
     });
-
-    console.log(jobIdMap);
-
-    const vehicleIdMap = {}; //orsVehicleId -> realDriverId (string)
 
     const vehicles = drivers.map((driver, index) => {
       const orsVehicleId = index + 1;
@@ -40,8 +35,6 @@ async function optimizeRouteWithORS(
             : "driving-car",
       };
     });
-
-    console.log(vehicleIdMap);
 
     const payload = {
       jobs,

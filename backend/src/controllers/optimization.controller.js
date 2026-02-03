@@ -1,10 +1,11 @@
-import mongoose from "mongoose";
 import DeliveryPoint from "../models/deliveryPoint.model.js";
-import Driver from "../models/driver.model.js";
-import Route from "../models/route.model.js";
 import { geocodeAddress } from "../services/geocode.service.js";
-import { getFreeDrivers , selectDrivers } from "../utils/driverSelectionHelper.js";
+import {
+  getFreeDrivers,
+  selectDrivers,
+} from "../utils/driverSelectionHelper.js";
 import { optimizeRouteWithORS } from "../services/ors.service.js";
+import { createAndPersistRoutes } from "../utils/routeCreationHelper.js";
 import { ApiError } from "../utils/apiError.js";
 
 async function getDepotInfo(depot) {
@@ -17,54 +18,106 @@ async function getDepotInfo(depot) {
 
 export const optimizeDeliveryRoute = async (req, res) => {
   const { depot, adminId, deliveries } = req.body;
-  if (!adminId || !deliveries || deliveries.length === 0 || !depot || !depot.address) {
+  if (
+    !adminId ||
+    !deliveries ||
+    deliveries.length === 0 ||
+    !depot ||
+    !depot.address
+  ) {
     return res
       .status(400)
       .json({ message: "adminId, depot and deliveries are required." });
   }
 
   try {
-    //  Get depot coords 
+    //  Get depot coords
     let depotLocation = await getDepotInfo(depot.address);
     if (!depotLocation) {
-        return res.status(400).json({ message: "Invalid depot information." });
+      return res.status(400).json({ message: "Invalid depot information." });
     }
 
-    // Geocode all deliveries in parallel 
-    const geoPromises = deliveries.map((d) => geocodeAddress(d.address));
-    const geos = await Promise.all(geoPromises);
-    const geocodedPoints = deliveries.map((d, i) => ({
-      address: d.address,
-      lat: geos[i].lat,
-      lng: geos[i].lng,
-      customerDetails: { name: d.name, phone: d.phone },
-      weight: Number(d.weight) || 25,
+    // Create delivery points in DB to get real MongoDB IDs
+    const deliveryPointsToCreate = await Promise.all(
+      deliveries.map(async (d) => {
+        const geo = await geocodeAddress(d.address);
+        return {
+          address: d.address,
+          lat: geo.lat,
+          lng: geo.lng,
+          customerDetails: { name: d.name, phone: d.phone },
+          weight: Number(d.weight) || 25,
+          status: "pending",
+        };
+      })
+    );
+
+    const createdDeliveryPoints = await DeliveryPoint.insertMany(
+      deliveryPointsToCreate
+    );
+    console.log(`✅ Created ${createdDeliveryPoints.length} delivery points`);
+
+    //  Prepare geocoded points with real MongoDB IDs for ORS
+    const geocodedPoints = createdDeliveryPoints.map((dp) => ({
+      tempId: dp._id.toString(), 
+      address: dp.address,
+      lat: dp.lat,
+      lng: dp.lng,
+      customerDetails: dp.customerDetails,
+      weight: dp.weight,
     }));
 
-    // console.log(geocodedPoints);
-
     // Fetching free drivers for this admin
-     const freeDriversRes = await getFreeDrivers(adminId);
+    const freeDriversRes = await getFreeDrivers(adminId);
     const freeDrivers = freeDriversRes.drivers;
     // console.log(freeDrivers);
 
     if (!freeDrivers.length) {
-      throw new ApiError(400, "No free drivers available for route optimization.");
+      throw new ApiError(
+        400,
+        "No free drivers available for route optimization."
+      );
     }
 
     const selectedDrivers = selectDrivers(freeDrivers, geocodedPoints);
     console.log("Selected Drivers:", selectedDrivers);
 
+    // Call ORS with numeric IDs + id maps
+    let response, jobIdMap, vehicleIdMap;
+    try {
+      const orsResult = await optimizeRouteWithORS(
+        depotLocation,
+        geocodedPoints,
+        selectedDrivers
+      );
+      response = orsResult.response;
+      jobIdMap = orsResult.jobIdMap;
+      vehicleIdMap = orsResult.vehicleIdMap;
+    } catch (orsError) {
+      // Rollback: Delete all created delivery points if ORS fails
+      const deliveryPointIds = createdDeliveryPoints.map((dp) => dp._id);
+      await DeliveryPoint.deleteMany({ _id: { $in: deliveryPointIds } });
+      console.warn(
+        ` Rolled back ${deliveryPointIds.length} delivery points due to ORS error`
+      );
+      throw orsError;
+    }
 
-    const { response, jobIdMap, vehicleIdMap } = await optimizeRouteWithORS(depotLocation, geocodedPoints, selectedDrivers);
+    //  Create and persist routes using id maps
+    const { routes, unassignedDeliveries, summary } = await createAndPersistRoutes(
+      response,
+      jobIdMap,
+      vehicleIdMap,
+      createdDeliveryPoints,
+      adminId
+    );
 
     return res.status(200).json({
       message: "Route optimization successful",
-      deliveries: geocodedPoints,
-      response:response
+      routes,
+      unassignedDeliveries,
+      summary,
     });
-
-
   } catch (error) {
     console.error("Optimization error:", error);
     return res

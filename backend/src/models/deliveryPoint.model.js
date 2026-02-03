@@ -33,10 +33,10 @@ const deliveryPointSchema = new mongoose.Schema(
       enum: ["pending", "in-progress", "delivered"],
       default: "pending",
     },
-    routeId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Route",
-    },
+    // routeId: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: "Route",
+    // },
   },
   { timestamps: true }
 );
