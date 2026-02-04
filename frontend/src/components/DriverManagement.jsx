@@ -1,6 +1,7 @@
 import { FiUsers } from "react-icons/fi";
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const DriverManagement = ({ drivers, refresh }) => {
   const [selected, setSelected] = useState(null);
@@ -42,11 +43,10 @@ const DriverManagement = ({ drivers, refresh }) => {
                     verifyDriver(d._id, refresh, setLoadingId)
                   }
                   disabled={loadingId === d._id}
-                  className={`px-4 py-1 rounded-md text-white ${
-                    loadingId === d._id
-                      ? "bg-gray-400"
-                      : "bg-green-600 hover:bg-green-700"
-                  }`}
+                  className={`px-4 py-1 rounded-md text-white ${loadingId === d._id
+                    ? "bg-gray-400"
+                    : "bg-green-600 hover:bg-green-700"
+                    }`}
                 >
                   {loadingId === d._id ? "Verifying..." : "Verify"}
                 </button>
@@ -69,11 +69,10 @@ const DriverManagement = ({ drivers, refresh }) => {
               <div
                 key={driver._id}
                 onClick={() => setSelected(driver)}
-                className={`p-3 rounded-lg cursor-pointer ${
-                  selected?._id === driver._id
-                    ? "bg-blue-100 border-l-4 border-blue-600"
-                    : "hover:bg-gray-50"
-                }`}
+                className={`p-3 rounded-lg cursor-pointer ${selected?._id === driver._id
+                  ? "bg-blue-100 border-l-4 border-blue-600"
+                  : "hover:bg-gray-50"
+                  }`}
               >
                 <div>
                   <p className="font-medium">{driver.name}</p>
@@ -113,17 +112,27 @@ const verifyDriver = async (driverId, refresh, setLoadingId) => {
 };
 
 // Driver Details
-const DriverDetails = ({ selected }) => (
-  <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border p-6">
-    <h3 className="text-xl font-semibold">{selected.name}</h3>
-    <p className="text-sm mb-4">{selected.email}</p>
+const DriverDetails = ({ selected }) => {
+  const navigate = useNavigate();
 
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <InfoCard label="Phone" value={selected.phone || "Not Provided"} />
-      <InfoCard label="Status" value={selected.status || "Active"} />
+  return (
+    <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border p-6">
+      <h3 className="text-xl font-semibold">{selected.name}</h3>
+      <p className="text-sm mb-4">{selected.email}</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <InfoCard label="Phone" value={selected.phone || "Not Provided"} />
+        <InfoCard label="Status" value={selected.status || "Active"} />
+        <button
+          onClick={() => navigate(`/admin/driver/${selected._id}`, { state: { driver: selected } })}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+        >
+          View Driver detail
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const InfoCard = ({ label, value }) => (
   <div className="p-4 bg-gray-50 border rounded-lg">
