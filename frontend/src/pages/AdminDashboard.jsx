@@ -126,8 +126,8 @@ const AdminDashboard = () => {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-5 py-2 rounded-full font-medium transition-all duration-300 ${activeTab === tab.id
-                  ? "bg-white text-blue-600 shadow-md"
-                  : "text-gray-700 hover:bg-white/80 hover:text-blue-600"
+                ? "bg-white text-blue-600 shadow-md"
+                : "text-gray-700 hover:bg-white/80 hover:text-blue-600"
                 }`}
             >
               <span>{tab.icon}</span>
