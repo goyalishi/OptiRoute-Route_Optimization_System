@@ -1,6 +1,7 @@
 import { Admin } from "../models/admin.model.js";
 import { ApiError } from "../utils/apiError.js";
 import Driver from "../models/driver.model.js";
+import Route from "../models/route.model.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import sendMail from "../services/Mail.service.js";
@@ -145,5 +146,59 @@ export const verifyDriver = async (req, res) => {
   } catch (error) {
     console.error(" Error verifying driver:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const assignRoutesToDrivers = async (req, res) => {
+  try {
+    const { adminId } = req.body;
+
+    if (!adminId) {
+      return res.status(400).json({ message: "Admin ID is required" });
+    }
+
+    const pendingRoutes = await Route.find({
+      adminId,
+      status: "pending",
+      driverId: { $exists: true, $ne: null },
+    });
+
+    if (pendingRoutes.length === 0) {
+      return res.status(200).json({
+        message: "No pending routes to assign",
+        assignedCount: 0,
+      });
+    }
+
+    // For each route, add it to the driver's routeIds
+    for (const route of pendingRoutes) {
+      const driver = await Driver.findById(route.driverId);
+
+      if (driver) {
+        if (!driver.routeIds.includes(route._id)) {
+          driver.routeIds.push(route._id);
+        }
+
+        if (driver.status === "free") {
+          driver.status = "busy";
+        }
+
+        await driver.save();
+      }
+
+      route.status = "assigned";
+      await route.save();
+    }
+
+    return res.status(200).json({
+      message: `Successfully assigned ${pendingRoutes.length} routes to drivers`,
+      assignedCount: pendingRoutes.length,
+    });
+  } catch (error) {
+    console.error("Error assigning routes to drivers:", error);
+    res.status(500).json({
+      message: "Error assigning routes to drivers",
+      error: error.message,
+    });
   }
 };
