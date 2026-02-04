@@ -25,7 +25,7 @@ const driverSchema = new mongoose.Schema(
     ],
     status: {
       type: String,
-      enum: ["free", "busy", "offline"],
+      enum: ["free", "busy", "unavailable"],
       default: "free",
     },
     currentLocation: {
@@ -34,7 +34,7 @@ const driverSchema = new mongoose.Schema(
     },
     verified: {
       type: Boolean,
-      default: false, // 🔹 not verified by default
+      default: false, //  not verified by default
     },
   },
   { timestamps: true }

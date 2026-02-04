@@ -10,12 +10,12 @@ const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
     cors: {
-        origin: "*", // Allow all origins (adjust as needed for production)
+        origin: "*", 
         methods: ["GET", "POST"],
     },
 });
 
-app.set("io", io); // Attach io to app for use in controllers
+app.set("io", io); 
 
 io.on("connection", (socket) => {
     console.log("New client connected:", socket.id);
