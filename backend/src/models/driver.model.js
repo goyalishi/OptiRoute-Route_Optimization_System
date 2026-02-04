@@ -34,7 +34,7 @@ const driverSchema = new mongoose.Schema(
     },
     verified: {
       type: Boolean,
-      default: false, // 🔹 not verified by default
+      default: false, //  not verified by default
     },
   },
   { timestamps: true }
