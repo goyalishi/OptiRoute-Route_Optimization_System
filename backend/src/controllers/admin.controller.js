@@ -2,6 +2,7 @@ import { Admin } from "../models/admin.model.js";
 import { ApiError } from "../utils/apiError.js";
 import Driver from "../models/driver.model.js";
 import Route from "../models/route.model.js";
+import DeliveryPoint from "../models/deliveryPoint.model.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import sendMail from "../services/Mail.service.js";
@@ -170,6 +171,11 @@ export const assignRoutesToDrivers = async (req, res) => {
       });
     }
 
+    // Collect all delivery point IDs from all pending routes
+    const allDeliveryPointIds = pendingRoutes.flatMap(
+      route => route.deliveryPoints || []
+    );
+
     // For each route, add it to the driver's routeIds
     for (const route of pendingRoutes) {
       const driver = await Driver.findById(route.driverId);
@@ -186,8 +192,17 @@ export const assignRoutesToDrivers = async (req, res) => {
         await driver.save();
       }
 
+      // Update route status to assigned
       route.status = "assigned";
       await route.save();
+    }
+
+    // Update all delivery points to "assigned" status in a single batch operation
+    if (allDeliveryPointIds.length > 0) {
+      await DeliveryPoint.updateMany(
+        { _id: { $in: allDeliveryPointIds } },
+        { $set: { status: "assigned" } }
+      );
     }
 
     return res.status(200).json({
