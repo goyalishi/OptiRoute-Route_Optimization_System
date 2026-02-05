@@ -30,13 +30,24 @@ const deliveryPointSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "assigned", "in-progress", "delivered"],
+      enum: [
+        "pending",
+        "assigned",
+        "in-progress",
+        "delivered",
+        "failed",
+        "cancelled",
+      ],
       default: "pending",
     },
-    // routeId: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "Route",
-    // },
+    failureReason: {
+      type: String,
+      default: null,
+    },
+    deliveredAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
