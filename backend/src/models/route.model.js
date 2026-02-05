@@ -34,7 +34,7 @@ const routeSchema = new mongoose.Schema(
     ],
     status: {
       type: String,
-      enum: ["pending", "assigned", "in-progress", "completed"],
+      enum: ["pending","assigned", "in-progress", "completed"],
       default: "pending",
     },
   },

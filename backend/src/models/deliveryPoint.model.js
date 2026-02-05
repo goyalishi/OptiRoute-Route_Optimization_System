@@ -30,7 +30,7 @@ const deliveryPointSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "in-progress", "delivered"],
+      enum: ["pending", "assigned", "in-progress", "delivered"],
       default: "pending",
     },
     // routeId: {

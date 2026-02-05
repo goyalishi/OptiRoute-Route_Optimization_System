@@ -1,6 +1,7 @@
 import Driver from "../models/driver.model.js";
 import { Admin } from "../models/admin.model.js";
 import Vehicle from "../models/vehicle.model.js";
+import Route from "../models/route.model.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
@@ -225,3 +226,33 @@ export const driverLogin = async (req, res) => {
     res.status(500).json({ message: "Login failed", error: error.message });
   }
 };
+
+export const getDriverRoutes = async(req, res) =>{
+  try {
+    const { driverId } = req.params;
+    const routes = await Route.find({ driverId })
+      .populate({
+        path: "deliveryPoints",
+        select: "address status customerDetails name phone"
+      })
+      .sort({ createdAt: -1 });
+    
+    if (!routes || routes.length === 0) {
+      return res.status(200).json({
+        message: "No routes found for this driver",
+        routes: []
+      });
+    }
+    
+    return res.status(200).json({
+      message: "Routes found successfully!",
+      routes: routes
+    });
+  } catch (error) {
+      return res.status(500).json({ 
+        message: "Error fetching driver routes", 
+        error: error.message 
+      });
+  }
+  
+}
