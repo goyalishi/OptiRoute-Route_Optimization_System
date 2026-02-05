@@ -5,6 +5,7 @@ import axios from "axios";
 import Papa from "papaparse";
 import DriverManagement from "../components/DriverManagement";
 import { io } from "socket.io-client";
+import toast, { Toaster } from 'react-hot-toast';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("optimize");
@@ -111,9 +112,47 @@ const AdminDashboard = () => {
     }
   };
 
+
+
+  // ... (existing imports)
+
+  const handleAssignRoutes = async () => {
+    try {
+      const response = await axios.patch(
+        `${import.meta.env.VITE_APP_SERVER_URL}/api/admin/assign-routes`,
+        { adminId: user.id }
+      );
+      if (response.data.message) {
+        toast.success(response.data.message, {
+          duration: 4000,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: '#fff',
+            fontWeight: 'bold',
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error assigning routes:", error);
+      const errorMsg = error.response?.data?.message || "Error assigning routes to drivers";
+      const detailedError = error.response?.data?.error || error.message;
+      toast.error(`${errorMsg}: ${detailedError}`, {
+        duration: 5000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: '#fff',
+          fontWeight: 'bold',
+        },
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 transition-all duration-300">
       <Navbar user={user} />
+      <Toaster />
 
       {/* Tabs Header aligned left */}
       <div className="flex justify-start mt-6 ml-8">
@@ -153,6 +192,7 @@ const AdminDashboard = () => {
             handleOptimize={handleOptimize}
             depotAddress={depotAddress}
             setDepotAddress={setDepotAddress}
+            handleAssignRoutes={handleAssignRoutes}
           />
         ) : (
           <DriverManagement drivers={driversData} refresh={fetchDriverStats} />
@@ -170,6 +210,7 @@ const OptimizeRoutes = ({
   handleOptimize,
   depotAddress,
   setDepotAddress,
+  handleAssignRoutes,
 }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
@@ -259,6 +300,16 @@ const OptimizeRoutes = ({
             value="⚠️ Pending Setup"
             color="text-yellow-600"
           />
+        </div>
+
+        {/* Assign Routes Button */}
+        <div className="mt-6">
+          <button
+            onClick={handleAssignRoutes}
+            className="w-full bg-gradient-to-r from-blue-600 to-green-500 text-white font-semibold py-3 rounded-xl shadow-md hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex justify-center items-center gap-2"
+          >
+            📋 Assign Routes to Drivers
+          </button>
         </div>
       </div>
     </div>
