@@ -4,14 +4,22 @@ import { FiMapPin, FiTruck, FiUploadCloud } from "react-icons/fi";
 import axios from "axios";
 import Papa from "papaparse";
 import DriverManagement from "../components/DriverManagement";
-import { initializeAdminSocket, disconnectAdminSocket, registerDriverDataRefresh } from "../utils/socketAdmin";
-import toast, { Toaster } from 'react-hot-toast';
+import {
+  initializeAdminSocket,
+  disconnectAdminSocket,
+  registerDriverDataRefresh,
+} from "../utils/socketAdmin";
+import toast, { Toaster } from "react-hot-toast";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("optimize");
   const [csvFile, setCsvFile] = useState(null);
   const [deliveries, setDeliveries] = useState([]);
   const [depotAddress, setDepotAddress] = useState("");
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [hasRoutes, setHasRoutes] = useState(false);
+  const [optimizationStatus, setOptimizationStatus] = useState("Pending Setup");
 
   const [notifications, setNotifications] = useState(0);
 
@@ -26,8 +34,13 @@ const AdminDashboard = () => {
     id: sessionStorage.getItem("userId"),
     onLogout: () => {
       sessionStorage.clear();
-      alert("Logged out successfully!");
-      window.location.href = "/";
+      toast.success("Logged out successfully!", {
+        duration: 2500,
+        position: "top-right",
+      });
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 600);
     },
   };
 
@@ -36,7 +49,7 @@ const AdminDashboard = () => {
       const adminId = sessionStorage.getItem("userId");
 
       const res = await axios.get(
-        `${import.meta.env.VITE_APP_SERVER_URL}/api/admin/drivers/${adminId}`
+        `${import.meta.env.VITE_APP_SERVER_URL}/api/admin/drivers/${adminId}`,
       );
 
       setDriversData(res.data);
@@ -50,7 +63,7 @@ const AdminDashboard = () => {
     fetchDriverStats();
 
     const adminId = sessionStorage.getItem("userId");
-    
+
     // Initialize socket connection with admin
     initializeAdminSocket(adminId);
 
@@ -70,23 +83,39 @@ const AdminDashboard = () => {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
+      transformHeader: (header) => header.trim().toLowerCase(),
       complete: (results) => {
         const parsed = results.data.map((row) => ({
-          name: row.Name || row.name,
-          address: row.Address || row.address,
-          phone: row.Phone || "",
-          weight: Number(row.Weight) || 25,
-          // Add more fields as needed
+          name: row.name || "",
+          address: row.address || "",
+          phone: row.phone || "",
+          weight: Number(row.weight) || 25,
         }));
         setDeliveries(parsed);
-        alert(`Parsed ${parsed.length} deliveries successfully!`);
+        toast.success(`Parsed ${parsed.length} deliveries successfully!`, {
+          duration: 3000,
+          position: "top-right",
+        });
       },
     });
   };
 
   const handleOptimize = async () => {
-    if (!csvFile) return alert("Please select a CSV file first.");
-    if (!depotAddress.trim()) return alert("Please enter a depot address.");
+    if (!csvFile) {
+      toast.error("Please select a CSV file first.", {
+        duration: 3000,
+        position: "top-right",
+      });
+      return;
+    }
+    if (!depotAddress.trim()) {
+      toast.error("Please enter a depot address.", {
+        duration: 3000,
+        position: "top-right",
+      });
+      return;
+    }
+    if (isOptimizing) return;
 
     const data = {
       adminId: user.id,
@@ -95,54 +124,78 @@ const AdminDashboard = () => {
     };
 
     try {
+      setIsOptimizing(true);
+      setOptimizationStatus("Optimizing...");
+      setHasRoutes(false);
       const response = await axios.post(
         `${import.meta.env.VITE_APP_SERVER_URL}/optimize`,
         data,
-        { headers: { "Content-Type": "application/json" } }
+        { headers: { "Content-Type": "application/json" } },
       );
 
       console.log("Response:", response.data);
-      alert("Optimization successful! Check console for route details.");
+      setOptimizationStatus("Optimized");
+      setHasRoutes(true);
+      toast.success("Optimization successful!", {
+        duration: 3000,
+        position: "top-right",
+      });
+      setCsvFile(null);
+      setDeliveries([]);
+      setOptimizationStatus("Pending Setup");
     } catch (error) {
       console.error("Optimization error:", error);
-      alert("Error optimizing routes.");
+      setOptimizationStatus("Failed");
+      const errorMsg =
+        error.response?.data?.message || "Error optimizing routes.";
+      toast.error(errorMsg, {
+        duration: 4000,
+        position: "top-right",
+      });
+      setHasRoutes(false);
+      setCsvFile(null);
+      setDeliveries([]);
+      setOptimizationStatus("Pending Setup");
+    } finally {
+      setIsOptimizing(false);
     }
   };
 
-
-
-  // ... (existing imports)
-
   const handleAssignRoutes = async () => {
     try {
+      if (isAssigning || !hasRoutes) return;
+      setIsAssigning(true);
       const response = await axios.patch(
         `${import.meta.env.VITE_APP_SERVER_URL}/api/admin/assign-routes`,
-        { adminId: user.id }
+        { adminId: user.id },
       );
       if (response.data.message) {
         toast.success(response.data.message, {
           duration: 4000,
-          position: 'top-right',
+          position: "top-right",
           style: {
-            background: '#10B981',
-            color: '#fff',
-            fontWeight: 'bold',
+            background: "#10B981",
+            color: "#fff",
+            fontWeight: "bold",
           },
         });
       }
     } catch (error) {
       console.error("Error assigning routes:", error);
-      const errorMsg = error.response?.data?.message || "Error assigning routes to drivers";
+      const errorMsg =
+        error.response?.data?.message || "Error assigning routes to drivers";
       const detailedError = error.response?.data?.error || error.message;
       toast.error(`${errorMsg}: ${detailedError}`, {
         duration: 5000,
-        position: 'top-right',
+        position: "top-right",
         style: {
-          background: '#EF4444',
-          color: '#fff',
-          fontWeight: 'bold',
+          background: "#EF4444",
+          color: "#fff",
+          fontWeight: "bold",
         },
       });
+    } finally {
+      setIsAssigning(false);
     }
   };
 
@@ -161,10 +214,11 @@ const AdminDashboard = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full font-medium transition-all duration-300 ${activeTab === tab.id
+              className={`flex items-center gap-2 px-5 py-2 rounded-full font-medium transition-all duration-300 ${
+                activeTab === tab.id
                   ? "bg-white text-blue-600 shadow-md"
                   : "text-gray-700 hover:bg-white/80 hover:text-blue-600"
-                }`}
+              }`}
             >
               <span>{tab.icon}</span>
               {tab.label}
@@ -190,6 +244,10 @@ const AdminDashboard = () => {
             depotAddress={depotAddress}
             setDepotAddress={setDepotAddress}
             handleAssignRoutes={handleAssignRoutes}
+            isOptimizing={isOptimizing}
+            isAssigning={isAssigning}
+            hasRoutes={hasRoutes}
+            optimizationStatus={optimizationStatus}
           />
         ) : (
           <DriverManagement drivers={driversData} refresh={fetchDriverStats} />
@@ -208,6 +266,10 @@ const OptimizeRoutes = ({
   depotAddress,
   setDepotAddress,
   handleAssignRoutes,
+  isOptimizing,
+  isAssigning,
+  hasRoutes,
+  optimizationStatus,
 }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
@@ -244,7 +306,9 @@ const OptimizeRoutes = ({
             >
               Choose File
             </label>
-            {csvFile && <p className="mt-2 text-sm text-gray-600">{csvFile.name}</p>}
+            {csvFile && (
+              <p className="mt-2 text-sm text-gray-600">{csvFile.name}</p>
+            )}
           </div>
         </div>
 
@@ -269,9 +333,14 @@ const OptimizeRoutes = ({
         <div className="flex justify-end">
           <button
             onClick={handleOptimize}
-            className="bg-gradient-to-r from-blue-600 to-green-500 text-white px-8 py-3 rounded-xl font-semibold shadow-md hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center gap-2"
+            disabled={isOptimizing}
+            className={`bg-gradient-to-r from-blue-600 to-green-500 text-white px-8 py-3 rounded-xl font-semibold shadow-md transform transition-all duration-300 flex items-center gap-2 ${
+              isOptimizing
+                ? "opacity-60 cursor-not-allowed"
+                : "hover:shadow-xl hover:scale-105"
+            }`}
           >
-            ⚡ Optimize Route
+            {isOptimizing ? "Optimizing..." : " Optimize Route"}
           </button>
         </div>
       </div>
@@ -294,8 +363,24 @@ const OptimizeRoutes = ({
           />
           <SummaryCard
             title="Optimization Status"
-            value="⚠️ Pending Setup"
-            color="text-yellow-600"
+            value={
+              optimizationStatus === "Optimized"
+                ? "Optimized"
+                : optimizationStatus === "Failed"
+                  ? "Failed"
+                  : optimizationStatus === "Optimizing..."
+                    ? "Optimizing..."
+                    : "Pending Setup"
+            }
+            color={
+              optimizationStatus === "Optimized"
+                ? "text-green-600"
+                : optimizationStatus === "Failed"
+                  ? "text-red-600"
+                  : optimizationStatus === "Optimizing..."
+                    ? "text-blue-600"
+                    : "text-yellow-600"
+            }
           />
         </div>
 
@@ -303,9 +388,14 @@ const OptimizeRoutes = ({
         <div className="mt-6">
           <button
             onClick={handleAssignRoutes}
-            className="w-full bg-gradient-to-r from-blue-600 to-green-500 text-white font-semibold py-3 rounded-xl shadow-md hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex justify-center items-center gap-2"
+            disabled={!hasRoutes || isAssigning}
+            className={`w-full bg-gradient-to-r from-blue-600 to-green-500 text-white font-semibold py-3 rounded-xl shadow-md transform transition-all duration-300 flex justify-center items-center gap-2 ${
+              !hasRoutes || isAssigning
+                ? "opacity-60 cursor-not-allowed"
+                : "hover:shadow-xl hover:scale-105"
+            }`}
           >
-            📋 Assign Routes to Drivers
+            {isAssigning ? "Assigning..." : "📋 Assign Routes to Drivers"}
           </button>
         </div>
       </div>
