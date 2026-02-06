@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FiMapPin, FiActivity } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import Navbar from '../components/Navbar';
-import Card from '../components/DriverDashboard/Card';
-import DeliveryList from '../components/DriverDashboard/DeliveryList';
 import toast, { Toaster } from 'react-hot-toast';
+import AssignedRouteCard from '../components/DriverDashboard/AssignedRouteCard';
 
 const DriverDashboard = () => {
   const navigate = useNavigate();
@@ -15,31 +13,43 @@ const DriverDashboard = () => {
     userId: sessionStorage.getItem("userId"),
   });
 
-  const [activeTab, setActiveTab] = useState("routemap");
+  const [activeTab, setActiveTab] = useState("assigned");
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [currentSequence, setCurrentSequence] = useState([]);
+  const [completedDeliveries, setCompletedDeliveries] = useState([]);
 
-  const fetchDashboardData = async () => {
-    try {
-      if (!user.userId) {
-        throw new Error("User ID not found. Please log in again.");
-      }
-      const response = await axios.get(`${import.meta.env.VITE_APP_SERVER_URL}/api/driver/dashboard/${user.userId}`);
-      setDashboardData(response.data);
-      console.log("Dashboard Data:", response.data);
-    } catch (err) {
-      console.error("Error fetching dashboard data:", err);
-      setError(err.message || "Failed to load dashboard data");
-      toast.error(err.message || "Failed to load dashboard data");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Fetch Dashboard Data
   useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        if (!user.userId) {
+          throw new Error("User ID not found. Please log in again.");
+        }
+        setLoading(true);
+        const response = await axios.get(`${import.meta.env.VITE_APP_SERVER_URL}/api/driver/dashboard/${user.userId}`);
+        setDashboardData(response.data);
+        console.log("Dashboard Data:", response.data);
+
+        // Auto-populate Current tab if there's an in-progress route
+        if (response.data.inProgressRoutes && response.data.inProgressRoutes.length > 0) {
+          const activeRoute = response.data.inProgressRoutes[0];
+          if (activeRoute.optimizedSeq) {
+            setCurrentSequence(activeRoute.optimizedSeq);
+          }
+        }
+
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+        toast.error("Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchDashboardData();
-  }, [user.userId]);
+  }, [user.userId, refreshTrigger]);
 
   const handleLogout = () => {
     sessionStorage.clear();
@@ -49,218 +59,212 @@ const DriverDashboard = () => {
     }, 1000);
   };
 
-  // Update the user object with logout method
   const userWithLogout = { ...user, onLogout: handleLogout };
 
-  const handleUpdateStatus = async (deliveryId, newStatus, failureReason = null) => {
-    try {
-      const response = await axios.patch(`${import.meta.env.VITE_APP_SERVER_URL}/api/driver/delivery/${deliveryId}/status`, {
-        status: newStatus,
-        driverId: user.userId,
-        failureReason
-      });
 
-      if (response.status === 200) {
-        toast.success(response.data.message || `Status updated to ${newStatus}`);
-        fetchDashboardData(); // Refresh data
+  // Handle Start Route Action
+  const handleStartRoute = async (routeId, adminId) => {
+    try {
+      const url = `${import.meta.env.VITE_APP_SERVER_URL}/api/driver/route/${routeId}/start`;
+      // Start route with adminId in the body as requested
+      const response = await axios.patch(url, { adminId });
+      console.log("Route started successfully!", response.data);
+
+      if (response.data?.route?.optimizedSeq) {
+        setCurrentSequence(response.data.route.optimizedSeq);
+        // Refresh dashboard data to update assigned/in-progress lists
+        setRefreshTrigger(prev => prev + 1);
       }
-    } catch (err) {
-      console.error("Error updating status:", err);
-      toast.error(err.response?.data?.message || `Failed to update status to ${newStatus}`);
-    }
-  };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading dashboard...</div>;
-  if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
-
-  const stats = dashboardData?.summary || {
-    totalDeliveries: 0,
-    completed: 0,
-    inProgress: 0,
-    assigned: 0
-  };
-
-  const currentRoute = dashboardData?.assignedRoutes?.[0];
-  const deliveries = currentRoute?.deliveryPoints || [];
-
-  const handleStartRoute = async () => {
-    if (!currentRoute?._id) return;
-    try {
-      await axios.patch(`${import.meta.env.VITE_APP_SERVER_URL}/api/driver/route/${currentRoute._id}/start`, {
-        driverId: user.userId
-      });
       toast.success("Route started successfully!");
-      fetchDashboardData();
     } catch (err) {
       console.error("Error starting route:", err);
-      // Show more detailed error message if available
       toast.error(err.response?.data?.message || "Failed to start route");
     }
   };
 
-  const handleCompleteRoute = async () => {
-    if (!currentRoute?._id) return;
+  // Handle Update Status
+  const handleUpdateStatus = async (deliveryId, status) => {
     try {
-      await axios.patch(`${import.meta.env.VITE_APP_SERVER_URL}/api/driver/route/${currentRoute._id}/complete`, {
+      const url = `${import.meta.env.VITE_APP_SERVER_URL}/api/driver/delivery/${deliveryId}/status`;
+      const response = await axios.patch(url, {
+        status,
         driverId: user.userId
       });
-      toast.success("Route completed successfully!");
-      fetchDashboardData();
-    } catch (err) {
-      console.error("Error completing route:", err);
-      if (err.response?.data?.pendingDeliveries) {
-        const pending = err.response.data.pendingDeliveries;
-        const pendingCount = pending.length;
-        toast.error(`${err.response.data.message}\n${pendingCount} pending deliveries.`);
-      } else {
-        toast.error(err.response?.data?.message || "Failed to complete route");
+      console.log("Status updated response:", response.data);
+      toast.success(`Status updated to ${status}`);
+
+      if (status === 'delivered') {
+        // Remove from current sequence
+        setCurrentSequence(prev => prev.filter(item => item.deliveryId !== deliveryId));
+
+        // Add to completed deliveries/Past tab
+        if (response.data?.delivery) {
+          setCompletedDeliveries(prev => [response.data.delivery, ...prev]);
+        }
       }
+    } catch (err) {
+      console.error("Error updating status:", err);
+      toast.error(err.response?.data?.message || "Failed to update status");
     }
   };
 
+
+  const assignedRoutes = dashboardData?.assignedRoutes || [];
+  const pastRoutes = dashboardData?.completedRoutes || [];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 ">
+    <div className="min-h-screen bg-gray-50 font-sans">
       <Toaster />
       <Navbar user={userWithLogout} />
 
-      {/* Tabs Section */}
-      <div className="flex ml-14 mt-6">
-        <div className="flex items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-blue-100 to-green-100 shadow-md py-2 px-3 text-black w-fit">
-          {[
-            { id: "routemap", label: "RouteMap", icon: "📊" },
-            { id: "deliveries", label: "Deliveries", icon: "👥" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-5 py-2 rounded-3xl text-base font-medium transition-all duration-300 ${activeTab === tab.id
-                ? "bg-white text-blue-600 shadow-sm"
-                : "text-gray-700 hover:bg-white/80 hover:text-blue-600"
-                }`}
-            >
-              <span className="text-lg">{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Driver Dashboard</h1>
+
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200 mb-8">
+          <nav className="-mb-px flex space-x-8">
+            {[
+              { id: 'current', label: 'Current' },
+              { id: 'past', label: 'Past' },
+              { id: 'assigned', label: 'Assigned' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                  ${activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+                `}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
         </div>
-      </div>
 
-
-      {/* Stats Cards Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 w-full px-6 lg:px-16">
-        <StatCard
-          title="Total Deliveries"
-          value={stats.totalDeliveries}
-          icon="📦"
-          color="bg-blue-100 text-blue-600"
-        />
-        <StatCard
-          title="Completed"
-          value={stats.completed}
-          icon="✅"
-          color="bg-green-100 text-green-600"
-        />
-        <StatCard
-          title="In Progress"
-          value={stats.inProgress}
-          icon="⏱️"
-          color="bg-yellow-100 text-yellow-600"
-        />
-        <StatCard
-          title="Assigned"
-          value={stats.assigned}
-          icon={<FiActivity className="text-xl" />}
-          color="bg-purple-100 text-purple-600"
-        />
-      </div>
-
-      <div>
-        {activeTab === "routemap" && (
-          <>
-            <div className="w-full px-6 lg:px-16 mb-8">
-              <div className="bg-white rounded-2xl p-6 shadow-lg border w-full flex flex-col items-center justify-center transition-transform hover:scale-[1.01]">
-                <div className="w-full flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-800">Route Overview</h2>
-                  <div className="flex gap-3">
-                    {/* Start/Complete Buttons */}
-                    {currentRoute && (
-                      <>
-                        <button
-                          onClick={handleStartRoute}
-                          disabled={currentRoute.status === 'in-progress' || currentRoute.status === 'completed'}
-                          className={`px-4 py-2 rounded-lg font-medium text-white transition-all ${currentRoute.status === 'assigned'
-                            ? 'bg-blue-600 hover:bg-blue-700 shadow-md'
-                            : 'bg-gray-300 cursor-not-allowed'
-                            }`}
-                        >
-                          Start Route
-                        </button>
-                        <button
-                          onClick={handleCompleteRoute}
-                          disabled={currentRoute.status !== 'in-progress'}
-                          className={`px-4 py-2 rounded-lg font-medium text-white transition-all ${currentRoute.status === 'in-progress'
-                            ? 'bg-green-600 hover:bg-green-700 shadow-md'
-                            : 'bg-gray-300 cursor-not-allowed'
-                            }`}
-                        >
-                          Complete Route
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className="w-full h-72 bg-gradient-to-br from-gray-100 to-gray-200 rounded-md flex flex-col items-center justify-center text-gray-600 font-medium shadow-sm">
-                  <FiMapPin className="text-5xl mb-3 text-gray-500" />
-                  <p className="text-lg">Map Preview Coming Soon 🗺️</p>
-                  {currentRoute?.googleMapsLink && (
-                    <a
-                      href={currentRoute.googleMapsLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                    >
-                      Open in Google Maps
-                    </a>
-                  )}
-                </div>
-                <Card route={currentRoute} />
-              </div>
-            </div>
-
-            <div className="w-full px-6 lg:px-16 mb-8">
-              <div className="bg-white rounded-2xl p-6 shadow-lg border w-full flex flex-col  justify-center transition-transform hover:scale-[1.01]">
-                <h2 className="text-xl font-semibold mb-4 text-gray-800">Delivery List</h2>
-                <DeliveryList deliveries={deliveries} onUpdateStatus={handleUpdateStatus} />
-              </div>
-            </div>
-
-          </>
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
         )}
 
-        {/* Reuse DeliveryList for deliveries tab or similar content */}
-        {activeTab === "deliveries" && (
-          <div className="w-full px-6 lg:px-16 mb-8">
-            <div className="bg-white rounded-2xl p-6 shadow-lg border w-full flex flex-col  justify-center transition-transform hover:scale-[1.01]">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">All Deliveries</h2>
-              <DeliveryList deliveries={deliveries} onUpdateStatus={handleUpdateStatus} />
-            </div>
+        {/* Dashboard Content */}
+        {!loading && (
+          <div className="min-h-[400px]">
+            {/* Assigned Tab */}
+            {activeTab === 'assigned' && (
+              <div className="space-y-6">
+                {assignedRoutes.length > 0 ? (
+                  assignedRoutes.map(route => (
+                    <AssignedRouteCard
+                      key={route._id}
+                      route={route}
+                      onStartRoute={(id) => handleStartRoute(id, route.adminId)}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
+                    <p className="text-gray-500 text-lg">No assigned routes at the moment.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Current Tab */}
+            {activeTab === 'current' && (
+              <div className="space-y-6">
+                {currentSequence.length > 0 ? (
+                  <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-6 p-6">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Routes</h3>
+                    <div className="space-y-4">
+                      {currentSequence.map((stop, index) => (
+                        <div key={stop._id || index} className="flex items-start gap-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-600 text-white font-bold rounded-full">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className="text-gray-800 font-medium">{stop.locationName}</p>
+                          </div>
+                          <select
+                            className="text-sm px-3 py-1.5 border border-gray-300 rounded-md"
+                            defaultValue="Update Status"
+                            onChange={(e) => {
+                              const status = e.target.value;
+                              if (status !== "Update Status") {
+                                handleUpdateStatus(stop.deliveryId, status.toLowerCase());
+                              }
+                            }}
+                          >
+                            <option disabled>Update Status</option>
+                            <option value="in-progress">In-progress</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="failed">Failed</option>
+                          </select>
+
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-dashed border-gray-300">
+                    <h3 className="text-xl font-medium text-gray-900">No Active Route Sequence</h3>
+                    <p className="mt-2 text-gray-500">Start a route to see the optimized sequence here.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Past Tab */}
+            {activeTab === 'past' && (
+              <div className="space-y-6">
+                {completedDeliveries.length > 0 || pastRoutes.length > 0 ? (
+                  <>
+                    {/* Newly Completed Deliveries */}
+                    {completedDeliveries.map(delivery => (
+                      <div key={delivery._id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="font-bold text-gray-900">{delivery.customerDetails?.name || 'Customer'}</h3>
+                            <p className="text-sm text-gray-500">{delivery.address}</p>
+                          </div>
+                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 capitalize">
+                            {delivery.status}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          Delivered at: {new Date(delivery.deliveredAt || delivery.updatedAt).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Historically Completed Routes (if needed) */}
+                    {pastRoutes.length > 0 && (
+                      <div className="mt-8 border-t pt-4">
+                        <h4 className="text-sm font-medium text-gray-500 mb-4">Historical Routes</h4>
+                        <div className="text-sm text-gray-400">
+                          {pastRoutes.length} completed routes from history
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-dashed border-gray-300">
+                    <h3 className="text-xl font-medium text-gray-900">No Past Deliveries</h3>
+                    <p className="mt-2 text-gray-500">Completed deliveries will appear here.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
-
     </div>
-  )
-}
-
-const StatCard = ({ title, value, icon, color }) => (
-  <div className="bg-white rounded-2xl p-5 shadow-lg border hover:shadow-xl transition-all duration-200">
-    <div className="flex items-center justify-between mb-2">
-      <div className={`${color} rounded-full p-2 text-xl`}>{icon}</div>
-      <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-    </div>
-    <p className="text-2xl font-bold text-gray-800">{value}</p>
-  </div>
-);
+  );
+};
 
 export default DriverDashboard;
