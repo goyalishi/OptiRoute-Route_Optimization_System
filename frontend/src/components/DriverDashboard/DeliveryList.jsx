@@ -1,14 +1,22 @@
-import React from 'react'
-import Delivery from './Delivery'
+import React from 'react';
+import Delivery from './Delivery';
 
-const DeliveryList = () => {
+const DeliveryList = ({ deliveries, onUpdateStatus }) => {
+  if (!deliveries || deliveries.length === 0) {
+    return <div className="p-4 text-center text-gray-500">No deliveries assigned for this route.</div>;
+  }
+
   return (
-    <div>
-        <Delivery name="GLA University" location="Mathura" status="Complete" />
-        <Delivery name="GL Bajaj" location="Mathura" status="In-progress" />
-        <Delivery name="IIT Delhi" location="Delhi" status="Pending" />
+    <div className="w-full">
+      {deliveries.map((delivery) => (
+        <Delivery
+          key={delivery._id}
+          delivery={delivery}
+          onUpdateStatus={onUpdateStatus}
+        />
+      ))}
     </div>
-  )
-}
+  );
+};
 
-export default DeliveryList
+export default DeliveryList;

@@ -4,6 +4,7 @@ import InputField from "../components/InputField";
 import RoleSelector from "../components/RoleSelector";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import toast, { Toaster } from "react-hot-toast";
 
 const AuthPage = () => {
   const [activeTab, setActiveTab] = useState("login");
@@ -51,7 +52,7 @@ const AuthPage = () => {
             sessionStorage.setItem("role", res.data.role);
             sessionStorage.setItem("userId", res.data.user.id);
             sessionStorage.setItem("username", res.data.user.username);
-            alert(`Welcome back, ${res.data.user.username}!`);
+            toast.success(`Welcome back, ${res.data.user.username}!`);
             navigate("/admin/dashboard");
             return;
           }
@@ -69,15 +70,16 @@ const AuthPage = () => {
             if (res.data.role === "driver") {
               sessionStorage.setItem("token", res.data.accessToken);
               sessionStorage.setItem("role", res.data.role);
+              sessionStorage.setItem("userId", res.data.user.id);
               sessionStorage.setItem("username", res.data.user.username);
-              alert(`Welcome back, ${res.data.user.username}!`);
+              toast.success(`Welcome back, ${res.data.user.username}!`);
               navigate("/driver/dashboard");
               return;
             }
           } catch (driverErr) {
             const msg =
               "Invalid credentials or account does not exist. Please try again.";
-            alert(msg);
+            toast.error(msg);
           }
         }
       } else {
@@ -94,7 +96,7 @@ const AuthPage = () => {
 
           sessionStorage.setItem("username", res.data.user.username);
           sessionStorage.setItem("role", "admin");
-          alert("Admin account created successfully!");
+          toast.success("Admin account created successfully!");
           navigate("/admin/dashboard");
         } else {
           // DRIVER SIGNUP + ADMIN EMAIL SEND
@@ -113,7 +115,7 @@ const AuthPage = () => {
             },
           );
 
-          alert(
+          toast.success(
             "Driver account created successfully! Wait for admin verification before logging in.",
           );
           navigate("/");
@@ -121,7 +123,7 @@ const AuthPage = () => {
       }
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Something went wrong!");
+      toast.error(err.response?.data?.message || "Something went wrong!");
     } finally {
       setLoading(false);
     }
@@ -129,6 +131,7 @@ const AuthPage = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-100 to-green-50">
+      <Toaster position="top-center" />
       <form
         onSubmit={handleSubmit}
         className="w-[380px] bg-white shadow-lg rounded-2xl p-8 text-center"
@@ -253,11 +256,10 @@ const AuthPage = () => {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full mt-4 text-white font-medium py-2 rounded-md transition ${
-              activeTab === "login"
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-green-600 hover:bg-green-700"
-            } ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
+            className={`w-full mt-4 text-white font-medium py-2 rounded-md transition ${activeTab === "login"
+              ? "bg-blue-600 hover:bg-blue-700"
+              : "bg-green-600 hover:bg-green-700"
+              } ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
           >
             {loading
               ? "Please wait..."
