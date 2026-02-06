@@ -2,10 +2,12 @@ import Driver from "../models/driver.model.js";
 import { Admin } from "../models/admin.model.js";
 import Vehicle from "../models/vehicle.model.js";
 import Route from "../models/route.model.js";
+import DeliveryPoint from "../models/deliveryPoint.model.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import sendMail from "../services/Mail.service.js";
+import { generateGoogleMapsLink } from "../utils/googleMapsHelper.js";
 
 // ---------- SIGNUP ----------
 export const driverSignup = async (req, res) => {
@@ -52,7 +54,6 @@ export const driverSignup = async (req, res) => {
         .json({ message: "Invalid admin email. No such admin exists." });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create new vehicle first
@@ -78,11 +79,9 @@ export const driverSignup = async (req, res) => {
 
     await newDriver.save();
 
-    // Update vehicle's assignedTo field
     newVehicle.assignedTo = newDriver._id;
     await newVehicle.save();
 
-    // Add driver reference to admin
     admin.driverIds.push(newDriver._id);
     await admin.save();
 
@@ -138,7 +137,6 @@ export const driverSignup = async (req, res) => {
   }
 };
 
-// ---------- LOGIN ----------
 export const driverLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -227,32 +225,298 @@ export const driverLogin = async (req, res) => {
   }
 };
 
-export const getDriverRoutes = async(req, res) =>{
+const fetchRoutesWithMaps = async (driverId) => {
+  const routes = await Route.find({ driverId })
+    .populate({
+      path: "deliveryPoints",
+      select:
+        "address status customerDetails lat lng weight failureReason deliveredAt",
+    })
+    .sort({ createdAt: -1 });
+
+  if (!routes || routes.length === 0) {
+    return [];
+  }
+
+  // Add Google Maps link to each route
+  return routes.map((route) => {
+    const routeObj = route.toObject();
+
+    // Generate Google Maps link if optimizedSeq exists
+    if (routeObj.optimizedSeq && routeObj.optimizedSeq.length > 0) {
+      routeObj.googleMapsLink = generateGoogleMapsLink(
+        routeObj.optimizedSeq,
+        routeObj.travelMode
+      );
+    }
+
+    return routeObj;
+  });
+};
+
+export const getDriverRoutes = async (req, res) => {
   try {
     const { driverId } = req.params;
-    const routes = await Route.find({ driverId })
-      .populate({
-        path: "deliveryPoints",
-        select: "address status customerDetails name phone"
-      })
-      .sort({ createdAt: -1 });
-    
-    if (!routes || routes.length === 0) {
+
+    const routesWithMaps = await fetchRoutesWithMaps(driverId);
+
+    if (routesWithMaps.length === 0) {
       return res.status(200).json({
         message: "No routes found for this driver",
-        routes: []
+        routes: [],
       });
     }
-    
+
     return res.status(200).json({
       message: "Routes found successfully!",
-      routes: routes
+      routes: routesWithMaps,
     });
   } catch (error) {
-      return res.status(500).json({ 
-        message: "Error fetching driver routes", 
-        error: error.message 
-      });
+    return res.status(500).json({
+      message: "Error fetching driver routes",
+      error: error.message,
+    });
   }
-  
-}
+};
+
+export const getDriverDashboard = async (req, res) => {
+  try {
+    const { driverId } = req.params;
+
+    // Get routes with maps using shared helper
+    const routesWithMaps = await fetchRoutesWithMaps(driverId);
+
+    if (routesWithMaps.length === 0) {
+      return res.status(200).json({
+        message: "No routes found for this driver",
+        assignedRoutes: [],
+        inProgressRoutes: [],
+        completedRoutes: [],
+        summary: {
+          assigned: 0,
+          inProgress: 0,
+          completed: 0,
+          totalDeliveries: 0,
+        },
+      });
+    }
+
+    // Group routes by status
+    const assignedRoutes = routesWithMaps.filter(
+      (r) => r.status === "assigned"
+    );
+    const inProgressRoutes = routesWithMaps.filter(
+      (r) => r.status === "in-progress"
+    );
+    const completedRoutes = routesWithMaps.filter(
+      (r) => r.status === "completed"
+    );
+
+    // Calculate summary stats
+    const totalDeliveries = routesWithMaps.reduce(
+      (sum, route) => sum + (route.deliveryPoints?.length || 0),
+      0
+    );
+
+    return res.status(200).json({
+      message: "Driver dashboard data fetched successfully",
+      assignedRoutes,
+      inProgressRoutes,
+      completedRoutes,
+      summary: {
+        assigned: assignedRoutes.length,
+        inProgress: inProgressRoutes.length,
+        completed: completedRoutes.length,
+        totalDeliveries,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching driver dashboard:", error);
+    return res.status(500).json({
+      message: "Error fetching driver dashboard",
+      error: error.message,
+    });
+  }
+};
+
+export const startRoute = async (req, res) => {
+  try {
+    const { routeId } = req.params;
+    const { driverId } = req.body;
+
+    const route = await Route.findById(routeId);
+    if (!route) {
+      return res.status(404).json({ message: "Route not found" });
+    }
+
+    if (route.status !== "assigned") {
+      return res.status(400).json({
+        message: `Cannot start route with status: ${route.status}. Only assigned routes can be started.`,
+      });
+    }
+
+    route.status = "in-progress";
+    await route.save();
+
+    await DeliveryPoint.updateMany(
+      { _id: { $in: route.deliveryPoints }, status: "assigned" },
+      { $set: { status: "in-progress" } }
+    );
+
+    // Emit socket event
+    const io = req.app.get("io");
+    if (io) {
+      const driver = await Driver.findById(route.driverId);
+      io.emit("route_started", {
+        routeId: route._id,
+        driverName: driver?.name || "Unknown Driver",
+        driverId: route.driverId,
+        adminId: route.adminId,
+        totalDeliveries: route.deliveryPoints?.length || 0,
+      });
+    }
+
+    return res.status(200).json({
+      message: "Route started successfully",
+      route,
+    });
+  } catch (error) {
+    console.error("Error starting route:", error);
+    return res.status(500).json({
+      message: "Error starting route",
+      error: error.message,
+    });
+  }
+};
+
+export const updateDeliveryStatus = async (req, res) => {
+  try {
+    const { deliveryId } = req.params;
+    const { status, failureReason, driverId } = req.body;
+
+    const validStatuses = ["in-progress", "delivered", "failed", "cancelled"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+      });
+    }
+
+    const updateData = { status };
+
+    if (status === "delivered") {
+      updateData.deliveredAt = new Date();
+      updateData.failureReason = null;
+    } else if (status === "failed" || status === "cancelled") {
+      updateData.failureReason = failureReason || "No reason provided";
+    }
+
+    const delivery = await DeliveryPoint.findByIdAndUpdate(
+      deliveryId,
+      updateData,
+      { new: true }
+    );
+
+    if (!delivery) {
+      return res.status(404).json({ message: "Delivery not found" });
+    }
+
+    const route = await Route.findOne({ deliveryPoints: deliveryId });
+    if (route) {
+      const io = req.app.get("io");
+      if (io) {
+        io.emit("delivery_updated", {
+          deliveryId: delivery._id,
+          address: delivery.address,
+          customerName: delivery.customerDetails?.name || "Unknown Customer",
+          routeId: route._id,
+          status: delivery.status,
+          adminId: route.adminId,
+          driverId: route.driverId,
+        });
+      }
+    }
+
+    return res.status(200).json({
+      message: "Delivery status updated successfully",
+      delivery,
+    });
+  } catch (error) {
+    console.error("Error updating delivery status:", error);
+    return res.status(500).json({
+      message: "Error updating delivery status",
+      error: error.message,
+    });
+  }
+};
+
+//  Complete a Route
+export const completeRoute = async (req, res) => {
+  try {
+    const { routeId } = req.params;
+    const { driverId } = req.body;
+
+    const route = await Route.findById(routeId).populate("deliveryPoints");
+    if (!route) {
+      return res.status(404).json({ message: "Route not found" });
+    }
+
+    // // Verify the route belongs to this driver
+    // if (route.driverId.toString() !== driverId) {
+    //   return res.status(403).json({ message: "Unauthorized" });
+    // }
+
+    // Check if there are pending deliveries
+    const pendingDeliveries = route.deliveryPoints.filter(
+      (d) => !["delivered", "failed", "cancelled"].includes(d.status)
+    );
+
+    if (pendingDeliveries.length > 0) {
+      return res.status(400).json({
+        message: `Cannot complete route. ${pendingDeliveries.length} deliveries are still pending.`,
+        pendingDeliveries: pendingDeliveries.map((d) => ({
+          id: d._id,
+          address: d.address,
+          status: d.status,
+        })),
+      });
+    }
+
+    route.status = "completed";
+    await route.save();
+
+    // Update driver status to free if no other active routes
+    const activeRoutes = await Route.find({
+      driverId: driverId,
+      status: { $in: ["assigned", "in-progress"] },
+    });
+
+    if (activeRoutes.length === 0) {
+      await Driver.findByIdAndUpdate(driverId, { status: "free" });
+    }
+
+    // Fetch driver details for meaningful notification
+    const driver = await Driver.findById(route.driverId);
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("route_completed", {
+        routeId: route._id,
+        driverName: driver?.name || "Unknown Driver",
+        driverId: route.driverId,
+        adminId: route.adminId,
+        totalDeliveries: route.deliveryPoints?.length || 0,
+      });
+    }
+
+    return res.status(200).json({
+      message: "Route completed successfully",
+      route,
+    });
+  } catch (error) {
+    console.error("Error completing route:", error);
+    return res.status(500).json({
+      message: "Error completing route",
+      error: error.message,
+    });
+  }
+};

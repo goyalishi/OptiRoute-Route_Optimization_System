@@ -8,6 +8,8 @@ import {
 } from "react-icons/fi";
 import Navbar from "../components/Navbar";
 import axios from "axios";
+import { getAdminSocket, initializeAdminSocket } from "../utils/socketAdmin";
+import toast, { Toaster } from "react-hot-toast";
 
 const DriverDetailsPage = () => {
   const { state } = useLocation();
@@ -19,41 +21,72 @@ const DriverDetailsPage = () => {
   const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchRoutes = async () => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_APP_SERVER_URL}/api/admin/driver-routes/${id}`
+      );
+      console.log(response.data.routes);
+      const routes = response.data.routes || [];
+
+  
+      const allDeliveries = routes.flatMap(route =>
+        (route.deliveryPoints || []).map(dp => ({
+          id: dp._id,
+          address: dp.address || dp.locationName,
+          customer: dp.customerDetails?.name || "Unknown Customer",
+          phone: dp.customerDetails?.phone || "N/A",
+          status: dp.status || "assigned", 
+          weight: "N/A"
+        }))
+      );
+
+      setDeliveries(allDeliveries);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setDeliveries([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchRoutes = async () => {
-      try {
-        const response = await axios.get(
-          `${import.meta.env.VITE_APP_SERVER_URL}/api/admin/driver-routes/${id}`
-        );
-        console.log(response.data.routes);
-        const routes = response.data.routes || [];
-
-        // Use all routes returned by the API (since API filters by driverId) and aggregate deliveries
-        const allDeliveries = routes.flatMap(route =>
-          (route.deliveryPoints || []).map(dp => ({
-            id: dp._id,
-            address: dp.address || dp.locationName,
-            customer: dp.customerDetails?.name || "Unknown Customer",
-            phone: dp.customerDetails?.phone || "N/A",
-            status: dp.status || "assigned", // Default to assigned
-            weight: "N/A",
-            time: "10:00 AM"
-          }))
-        );
-
-        setDeliveries(allDeliveries);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setDeliveries([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (state?.driver || id) {
       fetchRoutes();
     }
+
+    // Initialize socket if not already initialized
+    const adminId = sessionStorage.getItem("userId");
+    const existingSocket = getAdminSocket();
+    
+    if (adminId && !existingSocket) {
+      console.log("🔌 Initializing socket in DriverDetailsPage for admin:", adminId);
+      initializeAdminSocket(adminId);
+    } else if (existingSocket) {
+      console.log("✅ Socket already exists, reusing it");
+    }
   }, [id, state]);
+
+ 
+  useEffect(() => {
+    const socket = getAdminSocket();
+    if (!socket) return;
+
+    const handleDeliveryUpdate = (data) => {
+      console.log("🔄 DriverDetailsPage received event:", data);
+      fetchRoutes();
+    };
+
+    socket.on("delivery_updated", handleDeliveryUpdate);
+    socket.on("route_started", handleDeliveryUpdate);
+    socket.on("route_completed", handleDeliveryUpdate);
+
+    return () => {
+      socket.off("delivery_updated", handleDeliveryUpdate);
+      socket.off("route_started", handleDeliveryUpdate);
+      socket.off("route_completed", handleDeliveryUpdate);
+    };
+  }, [id]);
 
   if (!driver) {
     return (
@@ -93,6 +126,7 @@ const DriverDetailsPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar user={user} />
+      <Toaster />
 
       <div className="max-w-5xl mx-auto p-6 md:p-10">
         {/* Header Section */}

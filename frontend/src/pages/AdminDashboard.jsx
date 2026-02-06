@@ -4,7 +4,7 @@ import { FiMapPin, FiTruck, FiUploadCloud } from "react-icons/fi";
 import axios from "axios";
 import Papa from "papaparse";
 import DriverManagement from "../components/DriverManagement";
-import { io } from "socket.io-client";
+import { initializeAdminSocket, disconnectAdminSocket, registerDriverDataRefresh } from "../utils/socketAdmin";
 import toast, { Toaster } from 'react-hot-toast';
 
 const AdminDashboard = () => {
@@ -49,19 +49,16 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchDriverStats();
 
-    const socket = io(import.meta.env.VITE_APP_SERVER_URL);
+    const adminId = sessionStorage.getItem("userId");
+    
+    // Initialize socket connection with admin
+    initializeAdminSocket(adminId);
 
-    socket.on("connect", () => {
-      console.log("Connected to socket server");
-    });
-
-    socket.on("driver_registered", (data) => {
-      console.log("New driver registered:", data);
-      fetchDriverStats();
-    });
+    //callback to refresh driver stats when routes/deliveries update
+    registerDriverDataRefresh(fetchDriverStats);
 
     return () => {
-      socket.disconnect();
+      disconnectAdminSocket();
     };
   }, []);
 

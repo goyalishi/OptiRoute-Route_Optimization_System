@@ -11,14 +11,14 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
     cors: {
         origin: "*", 
-        methods: ["GET", "POST"],
+        methods: ["GET", "POST", "PATCH","DELETE"],
     },
 });
 
 app.set("io", io); 
 
 io.on("connection", (socket) => {
-    console.log("New client connected:", socket.id);
+    console.log("New client connected:", socket.id);    
     socket.on("disconnect", () => {
         console.log("Client disconnected:", socket.id);
     });
